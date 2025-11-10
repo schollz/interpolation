@@ -55,6 +55,8 @@ func main() {
 		{"BSpline5", interpolators.BSpline5},
 		{"Lagrange4", interpolators.Lagrange4},
 		{"Lagrange6", interpolators.Lagrange6},
+		{"Watte", interpolators.Watte},
+		{"Parabolic2x", interpolators.Parabolic2x},
 	}
 
 	for _, interp := range interpolationTypes {

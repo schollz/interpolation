@@ -335,6 +335,52 @@ func TestLagrange6Impulse(t *testing.T) {
 	}
 }
 
+func TestWatteImpulse(t *testing.T) {
+	tests := []struct {
+		x        float64
+		expected float64
+	}{
+		{0.0, 1.0},
+		{0.5, 1.0 - 0.5*0.5 - 0.5*0.25},
+		{1.0, 1.0 - 1.5*1.0 + 0.5*1.0},
+		{1.5, 1.0 - 1.5*1.5 + 0.5*2.25},
+		{2.0, 0.0},
+		{2.5, 0.0},
+		{-0.5, 1.0 - 0.5*0.5 - 0.5*0.25},
+		{-2.0, 0.0},
+	}
+
+	for _, tt := range tests {
+		result := watteImpulse(tt.x)
+		if math.Abs(result-tt.expected) > 1e-10 {
+			t.Errorf("watteImpulse(%v) = %v, want %v", tt.x, result, tt.expected)
+		}
+	}
+}
+
+func TestParabolic2xImpulse(t *testing.T) {
+	tests := []struct {
+		x        float64
+		expected float64
+	}{
+		{0.0, 0.5},
+		{0.5, 0.5 - 0.25*0.25},
+		{1.0, 1.0 - 1.0 + 0.25*1.0},
+		{1.5, 1.0 - 1.5 + 0.25*2.25},
+		{2.0, 0.0},
+		{2.5, 0.0},
+		{-0.5, 0.5 - 0.25*0.25},
+		{-2.0, 0.0},
+	}
+
+	for _, tt := range tests {
+		result := parabolic2xImpulse(tt.x)
+		if math.Abs(result-tt.expected) > 1e-10 {
+			t.Errorf("parabolic2xImpulse(%v) = %v, want %v", tt.x, result, tt.expected)
+		}
+	}
+}
+
 // Test resampling with different output sample counts
 func TestInterpolateResampling(t *testing.T) {
 	tests := []struct {
@@ -384,6 +430,18 @@ func TestInterpolateResampling(t *testing.T) {
 			input:            []float64{1.0, 2.0, 3.0, 4.0, 5.0, 6.0},
 			outSamples:       10,
 			interpolatorType: Lagrange6,
+		},
+		{
+			name:             "upsample with watte",
+			input:            []float64{1.0, 2.0, 3.0, 4.0},
+			outSamples:       7,
+			interpolatorType: Watte,
+		},
+		{
+			name:             "upsample with parabolic2x",
+			input:            []float64{1.0, 2.0, 3.0, 4.0},
+			outSamples:       7,
+			interpolatorType: Parabolic2x,
 		},
 	}
 
@@ -539,6 +597,72 @@ func TestInterpolateLagrange6(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			out, err := Interpolate(tt.input, len(tt.input), Lagrange6)
+			if err != nil {
+				t.Errorf("Interpolate() returned unexpected error: %v", err)
+			}
+
+			if len(out) != len(tt.input) {
+				t.Errorf("Interpolate() output length = %d, want %d", len(out), len(tt.input))
+			}
+		})
+	}
+}
+
+func TestInterpolateWatte(t *testing.T) {
+	tests := []struct {
+		name  string
+		input []float64
+	}{
+		{
+			name:  "empty input",
+			input: []float64{},
+		},
+		{
+			name:  "single element",
+			input: []float64{1.0},
+		},
+		{
+			name:  "multiple elements",
+			input: []float64{1.0, 2.0, 3.0, 4.0, 5.0},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			out, err := Interpolate(tt.input, len(tt.input), Watte)
+			if err != nil {
+				t.Errorf("Interpolate() returned unexpected error: %v", err)
+			}
+
+			if len(out) != len(tt.input) {
+				t.Errorf("Interpolate() output length = %d, want %d", len(out), len(tt.input))
+			}
+		})
+	}
+}
+
+func TestInterpolateParabolic2x(t *testing.T) {
+	tests := []struct {
+		name  string
+		input []float64
+	}{
+		{
+			name:  "empty input",
+			input: []float64{},
+		},
+		{
+			name:  "single element",
+			input: []float64{1.0},
+		},
+		{
+			name:  "multiple elements",
+			input: []float64{1.0, 2.0, 3.0, 4.0, 5.0},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			out, err := Interpolate(tt.input, len(tt.input), Parabolic2x)
 			if err != nil {
 				t.Errorf("Interpolate() returned unexpected error: %v", err)
 			}
