@@ -59,6 +59,9 @@ func main() {
 		{"Parabolic2x", interpolators.Parabolic2x},
 		{"Osculating4", interpolators.Osculating4},
 		{"Osculating6", interpolators.Osculating6},
+		{"Hermite4", interpolators.Hermite4},
+		{"Hermite6_3", interpolators.Hermite6_3},
+		{"Hermite6_5", interpolators.Hermite6_5},
 	}
 
 	for _, interp := range interpolationTypes {

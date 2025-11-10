@@ -28,6 +28,12 @@ const (
 	Osculating4
 	// Osculating6 is the 6-point, 5th-order 2nd-order-osculating interpolator
 	Osculating6
+	// Hermite4 is the 4-point, 3rd-order Hermite interpolator (Catmull-Rom spline)
+	Hermite4
+	// Hermite6_3 is the 6-point, 3rd-order Hermite interpolator
+	Hermite6_3
+	// Hermite6_5 is the 6-point, 5th-order Hermite interpolator
+	Hermite6_5
 )
 
 // dropSampleImpulse implements the drop-sample (0th-order B-spline) impulse response
@@ -228,6 +234,85 @@ func osculating6Impulse(x float64) float64 {
 	return 0.0
 }
 
+// hermite4Impulse implements the 4-point, 3rd-order Hermite impulse response
+// Also known as the Catmull-Rom spline, or α = -1/2 case of cardinal splines
+// Formula: f(x) = 1 - 5/2*x² + 3/2*x³ for 0 ≤ x < 1
+//          2 - 4*x + 5/2*x² - 1/2*x³ for 1 ≤ x < 2
+//          0 for x ≥ 2
+//          f(-x) otherwise (symmetric)
+func hermite4Impulse(x float64) float64 {
+	absX := math.Abs(x)
+
+	if absX >= 0 && absX < 1 {
+		x2 := absX * absX
+		x3 := x2 * absX
+		return 1.0 - 2.5*x2 + 1.5*x3
+	} else if absX >= 1 && absX < 2 {
+		x2 := absX * absX
+		x3 := x2 * absX
+		return 2.0 - 4.0*absX + 2.5*x2 - 0.5*x3
+	}
+	return 0.0
+}
+
+// hermite6_3Impulse implements the 6-point, 3rd-order Hermite impulse response
+// First derivative matches with the first derivatives of the Lagrangians
+// Formula: f(x) = 1 - 7/3*x² + 4/3*x³ for 0 ≤ x < 1
+//          5/2 - 59/12*x + 3*x² - 7/12*x³ for 1 ≤ x < 2
+//          -3/2 + 7/4*x - 2/3*x² + 1/12*x³ for 2 ≤ x < 3
+//          0 for x ≥ 3
+//          f(-x) otherwise (symmetric)
+func hermite6_3Impulse(x float64) float64 {
+	absX := math.Abs(x)
+
+	if absX >= 0 && absX < 1 {
+		x2 := absX * absX
+		x3 := x2 * absX
+		return 1.0 - (7.0/3.0)*x2 + (4.0/3.0)*x3
+	} else if absX >= 1 && absX < 2 {
+		x2 := absX * absX
+		x3 := x2 * absX
+		return 2.5 - (59.0/12.0)*absX + 3.0*x2 - (7.0/12.0)*x3
+	} else if absX >= 2 && absX < 3 {
+		x2 := absX * absX
+		x3 := x2 * absX
+		return -1.5 + 1.75*absX - (2.0/3.0)*x2 + (1.0/12.0)*x3
+	}
+	return 0.0
+}
+
+// hermite6_5Impulse implements the 6-point, 5th-order Hermite impulse response
+// Linear ramp between two Lagrangians
+// Formula: f(x) = 1 - 25/12*x² + 5/12*x³ + 13/12*x⁴ - 5/12*x⁵ for 0 ≤ x < 1
+//          1 + 5/12*x - 35/8*x² + 35/8*x³ - 13/8*x⁴ + 5/24*x⁵ for 1 ≤ x < 2
+//          3 - 29/4*x + 155/24*x² - 65/24*x³ + 13/24*x⁴ - 1/24*x⁵ for 2 ≤ x < 3
+//          0 for x ≥ 3
+//          f(-x) otherwise (symmetric)
+func hermite6_5Impulse(x float64) float64 {
+	absX := math.Abs(x)
+
+	if absX >= 0 && absX < 1 {
+		x2 := absX * absX
+		x3 := x2 * absX
+		x4 := x2 * x2
+		x5 := x4 * absX
+		return 1.0 - (25.0/12.0)*x2 + (5.0/12.0)*x3 + (13.0/12.0)*x4 - (5.0/12.0)*x5
+	} else if absX >= 1 && absX < 2 {
+		x2 := absX * absX
+		x3 := x2 * absX
+		x4 := x2 * x2
+		x5 := x4 * absX
+		return 1.0 + (5.0/12.0)*absX - (35.0/8.0)*x2 + (35.0/8.0)*x3 - (13.0/8.0)*x4 + (5.0/24.0)*x5
+	} else if absX >= 2 && absX < 3 {
+		x2 := absX * absX
+		x3 := x2 * absX
+		x4 := x2 * x2
+		x5 := x4 * absX
+		return 3.0 - (29.0/4.0)*absX + (155.0/24.0)*x2 - (65.0/24.0)*x3 + (13.0/24.0)*x4 - (1.0/24.0)*x5
+	}
+	return 0.0
+}
+
 // Interpolate performs interpolation on the input data based on the specified type
 func Interpolate(in []float64, outSamples int, interpolatorType InterpolatorType) (out []float64, err error) {
 	switch interpolatorType {
@@ -256,6 +341,12 @@ func Interpolate(in []float64, outSamples int, interpolatorType InterpolatorType
 		return applyInterpolation(in, outSamples, osculating4Impulse), nil
 	case Osculating6:
 		return applyInterpolation(in, outSamples, osculating6Impulse), nil
+	case Hermite4:
+		return applyInterpolation(in, outSamples, hermite4Impulse), nil
+	case Hermite6_3:
+		return applyInterpolation(in, outSamples, hermite6_3Impulse), nil
+	case Hermite6_5:
+		return applyInterpolation(in, outSamples, hermite6_5Impulse), nil
 	default:
 		out = make([]float64, len(in))
 		copy(out, in)
