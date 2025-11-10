@@ -7,7 +7,7 @@ import (
 	"os"
 	"os/exec"
 
-	"github.com/schollz/interpolation"
+	interpolators "github.com/schollz/interpolation"
 )
 
 // PlotData represents data for a single curve
@@ -23,7 +23,7 @@ func main() {
 	input := make([]float64, inputSamples)
 	for i := 0; i < inputSamples; i++ {
 		x := float64(i) / float64(inputSamples-1) * 2 * math.Pi
-		input[i] = math.Sin(x)
+		input[i] = math.Sin(x) * 10
 	}
 
 	// Number of output samples for interpolation (upsampling)
