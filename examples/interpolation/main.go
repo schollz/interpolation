@@ -62,6 +62,12 @@ func main() {
 		{"Hermite4", interpolators.Hermite4},
 		{"Hermite6_3", interpolators.Hermite6_3},
 		{"Hermite6_5", interpolators.Hermite6_5},
+		{"CubicSpline", interpolators.CubicSpline},
+		{"MonotonicCubic", interpolators.MonotonicCubic},
+		{"Lanczos2", interpolators.Lanczos2},
+		{"Lanczos3", interpolators.Lanczos3},
+		{"Bezier", interpolators.Bezier},
+		{"Akima", interpolators.Akima},
 	}
 
 	for _, interp := range interpolationTypes {
