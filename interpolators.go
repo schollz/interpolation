@@ -16,6 +16,10 @@ const (
 	BSpline3
 	// BSpline5 is the 5th-order B-spline (6-point)
 	BSpline5
+	// Lagrange4 is the 4-point, 3rd-order Lagrange interpolator
+	Lagrange4
+	// Lagrange6 is the 6-point, 5th-order Lagrange interpolator
+	Lagrange6
 )
 
 // dropSampleImpulse implements the drop-sample (0th-order B-spline) impulse response
@@ -79,6 +83,48 @@ func bspline5Impulse(x float64) float64 {
 	return 0.0
 }
 
+// lagrange4Impulse implements the 4-point, 3rd-order Lagrange impulse response
+func lagrange4Impulse(x float64) float64 {
+	absX := math.Abs(x)
+
+	if absX >= 0 && absX < 1 {
+		x2 := absX * absX
+		x3 := x2 * absX
+		return 1.0 - 0.5*absX - x2 + 0.5*x3
+	} else if absX >= 1 && absX < 2 {
+		x2 := absX * absX
+		x3 := x2 * absX
+		return 1.0 - 11.0*absX/6.0 + x2 - x3/6.0
+	}
+	return 0.0
+}
+
+// lagrange6Impulse implements the 6-point, 5th-order Lagrange impulse response
+func lagrange6Impulse(x float64) float64 {
+	absX := math.Abs(x)
+
+	if absX >= 0 && absX < 1 {
+		x2 := absX * absX
+		x3 := x2 * absX
+		x4 := x2 * x2
+		x5 := x4 * absX
+		return 1.0 - absX/3.0 - 5.0*x2/4.0 + 5.0*x3/12.0 + x4/4.0 - x5/12.0
+	} else if absX >= 1 && absX < 2 {
+		x2 := absX * absX
+		x3 := x2 * absX
+		x4 := x2 * x2
+		x5 := x4 * absX
+		return 1.0 - 13.0*absX/12.0 - 5.0*x2/8.0 + 25.0*x3/24.0 - 3.0*x4/8.0 + x5/24.0
+	} else if absX >= 2 && absX < 3 {
+		x2 := absX * absX
+		x3 := x2 * absX
+		x4 := x2 * x2
+		x5 := x4 * absX
+		return 1.0 - 137.0*absX/60.0 + 15.0*x2/8.0 - 17.0*x3/24.0 + x4/8.0 - x5/120.0
+	}
+	return 0.0
+}
+
 // Interpolate performs interpolation on the input data based on the specified type
 func Interpolate(in []float64, outSamples int, interpolatorType InterpolatorType) (out []float64, err error) {
 	switch interpolatorType {
@@ -95,6 +141,10 @@ func Interpolate(in []float64, outSamples int, interpolatorType InterpolatorType
 		return applyInterpolation(in, outSamples, bspline3Impulse), nil
 	case BSpline5:
 		return applyInterpolation(in, outSamples, bspline5Impulse), nil
+	case Lagrange4:
+		return applyInterpolation(in, outSamples, lagrange4Impulse), nil
+	case Lagrange6:
+		return applyInterpolation(in, outSamples, lagrange6Impulse), nil
 	default:
 		out = make([]float64, len(in))
 		copy(out, in)
