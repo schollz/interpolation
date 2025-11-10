@@ -20,6 +20,10 @@ const (
 	Lagrange4
 	// Lagrange6 is the 6-point, 5th-order Lagrange interpolator
 	Lagrange6
+	// Watte is the 4-point, 2nd-order Watte tri-linear interpolator
+	Watte
+	// Parabolic2x is the 4-point, 2nd-order parabolic 2x interpolator
+	Parabolic2x
 )
 
 // dropSampleImpulse implements the drop-sample (0th-order B-spline) impulse response
@@ -125,6 +129,42 @@ func lagrange6Impulse(x float64) float64 {
 	return 0.0
 }
 
+// watteImpulse implements the 4-point, 2nd-order Watte tri-linear impulse response
+// Formula: f(x) = 1 - 1/2*x - 1/2*x² for 0 ≤ x < 1
+//                 1 - 3/2*x + 1/2*x² for 1 ≤ x < 2
+//                 0 for x ≥ 2
+//          f(-x) otherwise (symmetric)
+func watteImpulse(x float64) float64 {
+	absX := math.Abs(x)
+
+	if absX >= 0 && absX < 1 {
+		x2 := absX * absX
+		return 1.0 - 0.5*absX - 0.5*x2
+	} else if absX >= 1 && absX < 2 {
+		x2 := absX * absX
+		return 1.0 - 1.5*absX + 0.5*x2
+	}
+	return 0.0
+}
+
+// parabolic2xImpulse implements the 4-point, 2nd-order parabolic 2x impulse response
+// Formula: f(x) = 1/2 - 1/4*x² for 0 ≤ x < 1
+//                 1 - x + 1/4*x² for 1 ≤ x < 2
+//                 0 for x ≥ 2
+//          f(-x) otherwise (symmetric)
+func parabolic2xImpulse(x float64) float64 {
+	absX := math.Abs(x)
+
+	if absX >= 0 && absX < 1 {
+		x2 := absX * absX
+		return 0.5 - 0.25*x2
+	} else if absX >= 1 && absX < 2 {
+		x2 := absX * absX
+		return 1.0 - absX + 0.25*x2
+	}
+	return 0.0
+}
+
 // Interpolate performs interpolation on the input data based on the specified type
 func Interpolate(in []float64, outSamples int, interpolatorType InterpolatorType) (out []float64, err error) {
 	switch interpolatorType {
@@ -145,6 +185,10 @@ func Interpolate(in []float64, outSamples int, interpolatorType InterpolatorType
 		return applyInterpolation(in, outSamples, lagrange4Impulse), nil
 	case Lagrange6:
 		return applyInterpolation(in, outSamples, lagrange6Impulse), nil
+	case Watte:
+		return applyInterpolation(in, outSamples, watteImpulse), nil
+	case Parabolic2x:
+		return applyInterpolation(in, outSamples, parabolic2xImpulse), nil
 	default:
 		out = make([]float64, len(in))
 		copy(out, in)
