@@ -381,6 +381,46 @@ func TestParabolic2xImpulse(t *testing.T) {
 	}
 }
 
+func TestOsculating4Impulse(t *testing.T) {
+	tests := []struct {
+		x        float64
+		expected float64
+	}{
+		{0.0, 1.0}, // At x=0: 1 - 0 - 0 + 0 - 0 = 1
+		{1.0, -4.0 + 18.0 - 29.0 + 21.5 - 7.5 + 1.0}, // At x=1, should be continuous
+		{2.0, 0.0}, // At x=2 and beyond, should be 0
+		{2.5, 0.0},
+		{-1.0, -4.0 + 18.0 - 29.0 + 21.5 - 7.5 + 1.0}, // Symmetric
+		{-2.0, 0.0},
+	}
+
+	for _, tt := range tests {
+		result := osculating4Impulse(tt.x)
+		if math.Abs(result-tt.expected) > 1e-10 {
+			t.Errorf("osculating4Impulse(%v) = %v, want %v", tt.x, result, tt.expected)
+		}
+	}
+}
+
+func TestOsculating6Impulse(t *testing.T) {
+	tests := []struct {
+		x        float64
+		expected float64
+	}{
+		{0.0, 1.0}, // At x=0: 1 - 0 - 0 + 0 - 0 = 1
+		{3.0, 0.0}, // At x=3 and beyond, should be 0
+		{3.5, 0.0},
+		{-3.0, 0.0}, // Symmetric
+	}
+
+	for _, tt := range tests {
+		result := osculating6Impulse(tt.x)
+		if math.Abs(result-tt.expected) > 1e-10 {
+			t.Errorf("osculating6Impulse(%v) = %v, want %v", tt.x, result, tt.expected)
+		}
+	}
+}
+
 // Test resampling with different output sample counts
 func TestInterpolateResampling(t *testing.T) {
 	tests := []struct {
@@ -442,6 +482,18 @@ func TestInterpolateResampling(t *testing.T) {
 			input:            []float64{1.0, 2.0, 3.0, 4.0},
 			outSamples:       7,
 			interpolatorType: Parabolic2x,
+		},
+		{
+			name:             "upsample with osculating4",
+			input:            []float64{1.0, 2.0, 3.0, 4.0},
+			outSamples:       7,
+			interpolatorType: Osculating4,
+		},
+		{
+			name:             "upsample with osculating6",
+			input:            []float64{1.0, 2.0, 3.0, 4.0, 5.0, 6.0},
+			outSamples:       10,
+			interpolatorType: Osculating6,
 		},
 	}
 
@@ -663,6 +715,72 @@ func TestInterpolateParabolic2x(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			out, err := Interpolate(tt.input, len(tt.input), Parabolic2x)
+			if err != nil {
+				t.Errorf("Interpolate() returned unexpected error: %v", err)
+			}
+
+			if len(out) != len(tt.input) {
+				t.Errorf("Interpolate() output length = %d, want %d", len(out), len(tt.input))
+			}
+		})
+	}
+}
+
+func TestInterpolateOsculating4(t *testing.T) {
+	tests := []struct {
+		name  string
+		input []float64
+	}{
+		{
+			name:  "empty input",
+			input: []float64{},
+		},
+		{
+			name:  "single element",
+			input: []float64{1.0},
+		},
+		{
+			name:  "multiple elements",
+			input: []float64{1.0, 2.0, 3.0, 4.0, 5.0},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			out, err := Interpolate(tt.input, len(tt.input), Osculating4)
+			if err != nil {
+				t.Errorf("Interpolate() returned unexpected error: %v", err)
+			}
+
+			if len(out) != len(tt.input) {
+				t.Errorf("Interpolate() output length = %d, want %d", len(out), len(tt.input))
+			}
+		})
+	}
+}
+
+func TestInterpolateOsculating6(t *testing.T) {
+	tests := []struct {
+		name  string
+		input []float64
+	}{
+		{
+			name:  "empty input",
+			input: []float64{},
+		},
+		{
+			name:  "single element",
+			input: []float64{1.0},
+		},
+		{
+			name:  "multiple elements",
+			input: []float64{1.0, 2.0, 3.0, 4.0, 5.0, 6.0},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			out, err := Interpolate(tt.input, len(tt.input), Osculating6)
 			if err != nil {
 				t.Errorf("Interpolate() returned unexpected error: %v", err)
 			}
