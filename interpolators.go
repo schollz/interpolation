@@ -749,3 +749,37 @@ func applyAkimaSpline(in []float64, outSamples int) []float64 {
 
 	return out
 }
+
+// InterpolateInt performs interpolation on integer input data and returns integer output
+// This function minimizes conversions by converting to float64 only once at the start
+// and back to int only once at the end (with rounding)
+func InterpolateInt(in []int, outSamples int, interpolatorType InterpolatorType) (out []int, err error) {
+	if len(in) == 0 {
+		return []int{}, nil
+	}
+
+	// Convert []int to []float64 once
+	inFloat := make([]float64, len(in))
+	for i, v := range in {
+		inFloat[i] = float64(v)
+	}
+
+	// Perform interpolation using the existing float64 function
+	outFloat, err := Interpolate(inFloat, outSamples, interpolatorType)
+	if err != nil {
+		return nil, err
+	}
+
+	// Convert []float64 back to []int once with rounding
+	out = make([]int, len(outFloat))
+	for i, v := range outFloat {
+		// Round to nearest integer
+		if v >= 0 {
+			out[i] = int(v + 0.5)
+		} else {
+			out[i] = int(v - 0.5)
+		}
+	}
+
+	return out, nil
+}
