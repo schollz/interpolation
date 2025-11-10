@@ -1218,3 +1218,261 @@ func BenchmarkInterpolators(b *testing.B) {
 		})
 	}
 }
+
+func TestInterpolateInt(t *testing.T) {
+	tests := []struct {
+		name             string
+		input            []int
+		outSamples       int
+		interpolatorType InterpolatorType
+	}{
+		{
+			name:             "empty input",
+			input:            []int{},
+			outSamples:       5,
+			interpolatorType: Linear,
+		},
+		{
+			name:             "single element",
+			input:            []int{42},
+			outSamples:       3,
+			interpolatorType: Linear,
+		},
+		{
+			name:             "two elements linear",
+			input:            []int{0, 10},
+			outSamples:       5,
+			interpolatorType: Linear,
+		},
+		{
+			name:             "multiple elements linear",
+			input:            []int{0, 10, 20, 30},
+			outSamples:       7,
+			interpolatorType: Linear,
+		},
+		{
+			name:             "negative values",
+			input:            []int{-10, -5, 0, 5, 10},
+			outSamples:       9,
+			interpolatorType: Linear,
+		},
+		{
+			name:             "upsample with bspline3",
+			input:            []int{1, 2, 3, 4, 5},
+			outSamples:       9,
+			interpolatorType: BSpline3,
+		},
+		{
+			name:             "downsample with linear",
+			input:            []int{0, 10, 20, 30, 40, 50},
+			outSamples:       3,
+			interpolatorType: Linear,
+		},
+		{
+			name:             "none type",
+			input:            []int{1, 2, 3, 4, 5},
+			outSamples:       5,
+			interpolatorType: None,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			out, err := InterpolateInt(tt.input, tt.outSamples, tt.interpolatorType)
+			if err != nil {
+				t.Errorf("InterpolateInt() returned unexpected error: %v", err)
+			}
+
+			expectedLen := tt.outSamples
+			if len(tt.input) == 0 {
+				expectedLen = 0
+			}
+
+			if len(out) != expectedLen {
+				t.Errorf("InterpolateInt() output length = %d, want %d", len(out), expectedLen)
+			}
+
+			// Verify output is []int
+			for i, v := range out {
+				if v != int(v) {
+					t.Errorf("InterpolateInt() output[%d] = %v is not an integer", i, v)
+				}
+			}
+
+			t.Logf("Input: %v, Output: %v", tt.input, out)
+		})
+	}
+}
+
+func TestInterpolateIntLinearUpsampling(t *testing.T) {
+	input := []int{0, 10, 20}
+	outSamples := 5
+	out, err := InterpolateInt(input, outSamples, Linear)
+	if err != nil {
+		t.Fatalf("InterpolateInt() returned unexpected error: %v", err)
+	}
+
+	if len(out) != outSamples {
+		t.Fatalf("InterpolateInt() output length = %d, want %d", len(out), outSamples)
+	}
+
+	// First and last values should match input endpoints
+	if out[0] != input[0] {
+		t.Errorf("First output value = %v, want %v", out[0], input[0])
+	}
+	if out[outSamples-1] != input[len(input)-1] {
+		t.Errorf("Last output value = %v, want %v", out[outSamples-1], input[len(input)-1])
+	}
+
+	// Output should be monotonically increasing for monotonic input
+	for i := 1; i < len(out); i++ {
+		if out[i] < out[i-1] {
+			t.Errorf("Output not monotonically increasing at index %d: %v < %v", i, out[i], out[i-1])
+		}
+	}
+
+	t.Logf("Input: %v, Output: %v", input, out)
+}
+
+func TestInterpolateIntRounding(t *testing.T) {
+	// Test that rounding is done correctly
+	tests := []struct {
+		name             string
+		input            []int
+		outSamples       int
+		interpolatorType InterpolatorType
+	}{
+		{
+			name:             "positive values with rounding",
+			input:            []int{0, 3, 6},
+			outSamples:       5,
+			interpolatorType: Linear,
+		},
+		{
+			name:             "negative values with rounding",
+			input:            []int{-6, -3, 0},
+			outSamples:       5,
+			interpolatorType: Linear,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			out, err := InterpolateInt(tt.input, tt.outSamples, tt.interpolatorType)
+			if err != nil {
+				t.Fatalf("InterpolateInt() returned unexpected error: %v", err)
+			}
+
+			// Verify all outputs are integers
+			for i, v := range out {
+				if v != int(v) {
+					t.Errorf("InterpolateInt() output[%d] = %v is not an integer", i, v)
+				}
+			}
+
+			t.Logf("Input: %v, Output: %v", tt.input, out)
+		})
+	}
+}
+
+func TestInterpolateIntAllTypes(t *testing.T) {
+	input := []int{1, 5, 10, 15, 20, 25}
+	outSamples := 10
+
+	interpolationTypes := []struct {
+		name string
+		typ  InterpolatorType
+	}{
+		{"None", None},
+		{"DropSample", DropSample},
+		{"Linear", Linear},
+		{"BSpline3", BSpline3},
+		{"BSpline5", BSpline5},
+		{"Lagrange4", Lagrange4},
+		{"Lagrange6", Lagrange6},
+		{"Watte", Watte},
+		{"Parabolic2x", Parabolic2x},
+		{"Osculating4", Osculating4},
+		{"Osculating6", Osculating6},
+		{"Hermite4", Hermite4},
+		{"Hermite6_3", Hermite6_3},
+		{"Hermite6_5", Hermite6_5},
+		{"CubicSpline", CubicSpline},
+		{"MonotonicCubic", MonotonicCubic},
+		{"Lanczos2", Lanczos2},
+		{"Lanczos3", Lanczos3},
+		{"Bezier", Bezier},
+		{"Akima", Akima},
+	}
+
+	for _, interp := range interpolationTypes {
+		t.Run(interp.name, func(t *testing.T) {
+			expectedLen := outSamples
+			if interp.typ == None {
+				expectedLen = len(input)
+			}
+
+			out, err := InterpolateInt(input, outSamples, interp.typ)
+			if err != nil {
+				t.Errorf("InterpolateInt() returned unexpected error: %v", err)
+			}
+
+			if len(out) != expectedLen {
+				t.Errorf("InterpolateInt() output length = %d, want %d", len(out), expectedLen)
+			}
+
+			// Verify all outputs are integers
+			for i, v := range out {
+				if v != int(v) {
+					t.Errorf("InterpolateInt() output[%d] = %v is not an integer", i, v)
+				}
+			}
+
+			t.Logf("%s - Input: %v, Output: %v", interp.name, input, out)
+		})
+	}
+}
+
+// BenchmarkInterpolateInt benchmarks InterpolateInt vs manual conversion
+func BenchmarkInterpolateInt(b *testing.B) {
+	input := make([]int, 1000)
+	for i := range input {
+		input[i] = i * 10
+	}
+	outSamples := 500
+
+	b.Run("InterpolateInt", func(b *testing.B) {
+		for i := 0; i < b.N; i++ {
+			_, err := InterpolateInt(input, outSamples, Linear)
+			if err != nil {
+				b.Fatalf("InterpolateInt() returned unexpected error: %v", err)
+			}
+		}
+	})
+
+	b.Run("ManualConversion", func(b *testing.B) {
+		for i := 0; i < b.N; i++ {
+			// Convert to float64
+			inFloat := make([]float64, len(input))
+			for j, v := range input {
+				inFloat[j] = float64(v)
+			}
+
+			// Interpolate
+			outFloat, err := Interpolate(inFloat, outSamples, Linear)
+			if err != nil {
+				b.Fatalf("Interpolate() returned unexpected error: %v", err)
+			}
+
+			// Convert back to int
+			out := make([]int, len(outFloat))
+			for j, v := range outFloat {
+				if v >= 0 {
+					out[j] = int(v + 0.5)
+				} else {
+					out[j] = int(v - 0.5)
+				}
+			}
+		}
+	})
+}
