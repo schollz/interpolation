@@ -59,17 +59,23 @@ goos: linux
 goarch: amd64
 pkg: github.com/schollz/interpolation
 cpu: 13th Gen Intel(R) Core(TM) i9-13900K
-BenchmarkInterpolators/DropSample-32         	    1513	    692931 ns/op
-BenchmarkInterpolators/Linear-32             	    1660	    691202 ns/op
-BenchmarkInterpolators/BSpline3-32           	    1502	    787052 ns/op
-BenchmarkInterpolators/BSpline5-32           	    1592	    753884 ns/op
-BenchmarkInterpolators/Lagrange4-32          	    1710	    695600 ns/op
-BenchmarkInterpolators/Lagrange6-32          	    1594	    739541 ns/op
-BenchmarkInterpolators/Watte-32              	    1714	    695756 ns/op
-BenchmarkInterpolators/Parabolic2x-32        	    1519	    768830 ns/op
-BenchmarkInterpolators/Osculating4-32        	    1681	    710967 ns/op
-BenchmarkInterpolators/Osculating6-32        	    1622	    739333 ns/op
-BenchmarkInterpolators/Hermite4-32           	    1690	    695956 ns/op
-BenchmarkInterpolators/Hermite6_3-32         	    1561	    735592 ns/op
-BenchmarkInterpolators/Hermite6_5-32         	    1633	    732925 ns/op
+BenchmarkInterpolators/DropSample-32         	    1630	    727904 ns/op
+BenchmarkInterpolators/Linear-32             	    1574	    731301 ns/op
+BenchmarkInterpolators/BSpline3-32           	    1430	    830065 ns/op
+BenchmarkInterpolators/BSpline5-32           	    1489	    800694 ns/op
+BenchmarkInterpolators/Lagrange4-32          	    1626	    731049 ns/op
+BenchmarkInterpolators/Lagrange6-32          	    1422	    776290 ns/op
+BenchmarkInterpolators/Watte-32              	    1641	    729529 ns/op
+BenchmarkInterpolators/Parabolic2x-32        	    1482	    812000 ns/op
+BenchmarkInterpolators/Osculating4-32        	    1616	    740163 ns/op
+BenchmarkInterpolators/Osculating6-32        	    1532	    782763 ns/op
+BenchmarkInterpolators/Hermite4-32           	    1638	    733020 ns/op
+BenchmarkInterpolators/Hermite6_3-32         	    1544	    770836 ns/op
+BenchmarkInterpolators/Hermite6_5-32         	    1543	    770243 ns/op
+BenchmarkInterpolators/CubicSpline-32        	   60253	     19571 ns/op
+BenchmarkInterpolators/MonotonicCubic-32     	  141849	      9216 ns/op
+BenchmarkInterpolators/Lanczos2-32           	    1585	    757603 ns/op
+BenchmarkInterpolators/Lanczos3-32           	    1473	    765207 ns/op
+BenchmarkInterpolators/Bezier-32             	    1560	    758721 ns/op
+BenchmarkInterpolators/Akima-32              	  155307	      7629 ns/op
 ```
