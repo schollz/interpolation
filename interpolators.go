@@ -24,6 +24,10 @@ const (
 	Watte
 	// Parabolic2x is the 4-point, 2nd-order parabolic 2x interpolator
 	Parabolic2x
+	// Osculating4 is the 4-point, 5th-order 2nd-order-osculating interpolator
+	Osculating4
+	// Osculating6 is the 6-point, 5th-order 2nd-order-osculating interpolator
+	Osculating6
 )
 
 // dropSampleImpulse implements the drop-sample (0th-order B-spline) impulse response
@@ -131,9 +135,10 @@ func lagrange6Impulse(x float64) float64 {
 
 // watteImpulse implements the 4-point, 2nd-order Watte tri-linear impulse response
 // Formula: f(x) = 1 - 1/2*x - 1/2*x² for 0 ≤ x < 1
-//                 1 - 3/2*x + 1/2*x² for 1 ≤ x < 2
-//                 0 for x ≥ 2
-//          f(-x) otherwise (symmetric)
+//
+//	       1 - 3/2*x + 1/2*x² for 1 ≤ x < 2
+//	       0 for x ≥ 2
+//	f(-x) otherwise (symmetric)
 func watteImpulse(x float64) float64 {
 	absX := math.Abs(x)
 
@@ -149,9 +154,10 @@ func watteImpulse(x float64) float64 {
 
 // parabolic2xImpulse implements the 4-point, 2nd-order parabolic 2x impulse response
 // Formula: f(x) = 1/2 - 1/4*x² for 0 ≤ x < 1
-//                 1 - x + 1/4*x² for 1 ≤ x < 2
-//                 0 for x ≥ 2
-//          f(-x) otherwise (symmetric)
+//
+//	       1 - x + 1/4*x² for 1 ≤ x < 2
+//	       0 for x ≥ 2
+//	f(-x) otherwise (symmetric)
 func parabolic2xImpulse(x float64) float64 {
 	absX := math.Abs(x)
 
@@ -161,6 +167,63 @@ func parabolic2xImpulse(x float64) float64 {
 	} else if absX >= 1 && absX < 2 {
 		x2 := absX * absX
 		return 1.0 - absX + 0.25*x2
+	}
+	return 0.0
+}
+
+// osculating4Impulse implements the 4-point, 5th-order 2nd-order-osculating impulse response
+// Formula: f(x) = 1 - x² - 9/2*x³ + 15/2*x⁴ - 3*x⁵ for 0 ≤ x < 1
+//
+//	       -4 + 18x - 29x² + 43/2*x³ - 15/2*x⁴ + x⁵ for 1 ≤ x < 2
+//	       0 for x ≥ 2
+//	f(-x) otherwise (symmetric)
+func osculating4Impulse(x float64) float64 {
+	absX := math.Abs(x)
+
+	if absX >= 0 && absX < 1 {
+		x2 := absX * absX
+		x3 := x2 * absX
+		x4 := x2 * x2
+		x5 := x4 * absX
+		return 1.0 - x2 - 4.5*x3 + 7.5*x4 - 3.0*x5
+	} else if absX >= 1 && absX < 2 {
+		x2 := absX * absX
+		x3 := x2 * absX
+		x4 := x2 * x2
+		x5 := x4 * absX
+		return -4.0 + 18.0*absX - 29.0*x2 + 21.5*x3 - 7.5*x4 + x5
+	}
+	return 0.0
+}
+
+// osculating6Impulse implements the 6-point, 5th-order 2nd-order-osculating impulse response
+// Formula: f(x) = 1 - 5/4*x² - 35/12*x³ + 21/4*x⁴ - 25/12*x⁵ for 0 ≤ x < 1
+//
+//	       -4 + 75/4*x - 245/8*x² + 545/24*x³ - 63/8*x⁴ + 25/24*x⁵ for 1 ≤ x < 2
+//	       18 - 153/4*x + 255/8*x² - 313/24*x³ + 21/8*x⁴ - 5/24*x⁵ for 2 ≤ x < 3
+//	       0 for x ≥ 3
+//	f(-x) otherwise (symmetric)
+func osculating6Impulse(x float64) float64 {
+	absX := math.Abs(x)
+
+	if absX >= 0 && absX < 1 {
+		x2 := absX * absX
+		x3 := x2 * absX
+		x4 := x2 * x2
+		x5 := x4 * absX
+		return 1.0 - 1.25*x2 - (35.0/12.0)*x3 + 5.25*x4 - (25.0/12.0)*x5
+	} else if absX >= 1 && absX < 2 {
+		x2 := absX * absX
+		x3 := x2 * absX
+		x4 := x2 * x2
+		x5 := x4 * absX
+		return -4.0 + 18.75*absX - 30.625*x2 + (545.0/24.0)*x3 - 7.875*x4 + (25.0/24.0)*x5
+	} else if absX >= 2 && absX < 3 {
+		x2 := absX * absX
+		x3 := x2 * absX
+		x4 := x2 * x2
+		x5 := x4 * absX
+		return 18.0 - 38.25*absX + 31.875*x2 - (313.0/24.0)*x3 + 2.625*x4 - (5.0/24.0)*x5
 	}
 	return 0.0
 }
@@ -189,6 +252,10 @@ func Interpolate(in []float64, outSamples int, interpolatorType InterpolatorType
 		return applyInterpolation(in, outSamples, watteImpulse), nil
 	case Parabolic2x:
 		return applyInterpolation(in, outSamples, parabolic2xImpulse), nil
+	case Osculating4:
+		return applyInterpolation(in, outSamples, osculating4Impulse), nil
+	case Osculating6:
+		return applyInterpolation(in, outSamples, osculating6Impulse), nil
 	default:
 		out = make([]float64, len(in))
 		copy(out, in)

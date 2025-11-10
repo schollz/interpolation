@@ -57,6 +57,8 @@ func main() {
 		{"Lagrange6", interpolators.Lagrange6},
 		{"Watte", interpolators.Watte},
 		{"Parabolic2x", interpolators.Parabolic2x},
+		{"Osculating4", interpolators.Osculating4},
+		{"Osculating6", interpolators.Osculating6},
 	}
 
 	for _, interp := range interpolationTypes {
