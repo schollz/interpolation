@@ -80,7 +80,7 @@ func bspline5Impulse(x float64) float64 {
 }
 
 // Interpolate performs interpolation on the input data based on the specified type
-func Interpolate(in []float64, interpolatorType InterpolatorType) (out []float64, err error) {
+func Interpolate(in []float64, outSamples int, interpolatorType InterpolatorType) (out []float64, err error) {
 	switch interpolatorType {
 	case None:
 		// None type returns input exactly as it was
@@ -88,13 +88,13 @@ func Interpolate(in []float64, interpolatorType InterpolatorType) (out []float64
 		copy(out, in)
 		return out, nil
 	case DropSample:
-		return applyInterpolation(in, dropSampleImpulse), nil
+		return applyInterpolation(in, outSamples, dropSampleImpulse), nil
 	case Linear:
-		return applyInterpolation(in, linearImpulse), nil
+		return applyInterpolation(in, outSamples, linearImpulse), nil
 	case BSpline3:
-		return applyInterpolation(in, bspline3Impulse), nil
+		return applyInterpolation(in, outSamples, bspline3Impulse), nil
 	case BSpline5:
-		return applyInterpolation(in, bspline5Impulse), nil
+		return applyInterpolation(in, outSamples, bspline5Impulse), nil
 	default:
 		out = make([]float64, len(in))
 		copy(out, in)
@@ -103,18 +103,29 @@ func Interpolate(in []float64, interpolatorType InterpolatorType) (out []float64
 }
 
 // applyInterpolation applies the given impulse response function to interpolate the input data
-func applyInterpolation(in []float64, impulse func(float64) float64) []float64 {
+func applyInterpolation(in []float64, outSamples int, impulse func(float64) float64) []float64 {
 	if len(in) == 0 {
 		return []float64{}
 	}
 
-	out := make([]float64, len(in))
+	out := make([]float64, outSamples)
+
+	// Calculate the ratio to map output samples to input samples
+	var ratio float64
+	if outSamples > 1 {
+		ratio = float64(len(in)-1) / float64(outSamples-1)
+	} else {
+		ratio = 0
+	}
 
 	for i := range out {
+		// Calculate the position in the input array
+		pos := float64(i) * ratio
 		sum := 0.0
+
 		// Apply the impulse response convolution
 		for j := range in {
-			distance := float64(i - j)
+			distance := pos - float64(j)
 			sum += in[j] * impulse(distance)
 		}
 		out[i] = sum

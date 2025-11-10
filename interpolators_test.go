@@ -34,7 +34,7 @@ func TestInterpolateNone(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			out, err := Interpolate(tt.input, None)
+			out, err := Interpolate(tt.input, len(tt.input), None)
 			if err != nil {
 				t.Errorf("Interpolate() returned unexpected error: %v", err)
 			}
@@ -93,7 +93,7 @@ func TestInterpolateDropSample(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			out, err := Interpolate(tt.input, DropSample)
+			out, err := Interpolate(tt.input, len(tt.input), DropSample)
 			if err != nil {
 				t.Errorf("Interpolate() returned unexpected error: %v", err)
 			}
@@ -136,7 +136,7 @@ func TestInterpolateLinear(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			out, err := Interpolate(tt.input, Linear)
+			out, err := Interpolate(tt.input, len(tt.input), Linear)
 			if err != nil {
 				t.Errorf("Interpolate() returned unexpected error: %v", err)
 			}
@@ -169,7 +169,7 @@ func TestInterpolateBSpline3(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			out, err := Interpolate(tt.input, BSpline3)
+			out, err := Interpolate(tt.input, len(tt.input), BSpline3)
 			if err != nil {
 				t.Errorf("Interpolate() returned unexpected error: %v", err)
 			}
@@ -202,7 +202,7 @@ func TestInterpolateBSpline5(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			out, err := Interpolate(tt.input, BSpline5)
+			out, err := Interpolate(tt.input, len(tt.input), BSpline5)
 			if err != nil {
 				t.Errorf("Interpolate() returned unexpected error: %v", err)
 			}
@@ -291,5 +291,142 @@ func TestBSpline5Impulse(t *testing.T) {
 		if math.Abs(result-tt.expected) > 1e-10 {
 			t.Errorf("bspline5Impulse(%v) = %v, want %v", tt.x, result, tt.expected)
 		}
+	}
+}
+
+// Test resampling with different output sample counts
+func TestInterpolateResampling(t *testing.T) {
+	tests := []struct {
+		name             string
+		input            []float64
+		outSamples       int
+		interpolatorType InterpolatorType
+	}{
+		{
+			name:             "upsample with linear",
+			input:            []float64{0.0, 1.0, 2.0, 3.0},
+			outSamples:       7,
+			interpolatorType: Linear,
+		},
+		{
+			name:             "downsample with linear",
+			input:            []float64{0.0, 1.0, 2.0, 3.0, 4.0, 5.0},
+			outSamples:       3,
+			interpolatorType: Linear,
+		},
+		{
+			name:             "upsample with bspline3",
+			input:            []float64{1.0, 2.0, 3.0},
+			outSamples:       5,
+			interpolatorType: BSpline3,
+		},
+		{
+			name:             "downsample with bspline5",
+			input:            []float64{1.0, 2.0, 3.0, 4.0, 5.0, 6.0},
+			outSamples:       3,
+			interpolatorType: BSpline5,
+		},
+		{
+			name:             "same size with drop sample",
+			input:            []float64{1.0, 2.0, 3.0},
+			outSamples:       3,
+			interpolatorType: DropSample,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			out, err := Interpolate(tt.input, tt.outSamples, tt.interpolatorType)
+			if err != nil {
+				t.Errorf("Interpolate() returned unexpected error: %v", err)
+			}
+
+			if len(out) != tt.outSamples {
+				t.Errorf("Interpolate() output length = %d, want %d", len(out), tt.outSamples)
+			}
+
+			// For debugging, print the output
+			t.Logf("Input: %v, Output: %v", tt.input, out)
+		})
+	}
+}
+
+// Test that upsampling produces expected values for linear interpolation
+func TestInterpolateLinearUpsampling(t *testing.T) {
+	input := []float64{0.0, 2.0, 4.0}
+	outSamples := 5
+	out, err := Interpolate(input, outSamples, Linear)
+	if err != nil {
+		t.Fatalf("Interpolate() returned unexpected error: %v", err)
+	}
+
+	if len(out) != outSamples {
+		t.Fatalf("Interpolate() output length = %d, want %d", len(out), outSamples)
+	}
+
+	// First and last values should match input endpoints
+	if math.Abs(out[0]-input[0]) > 1e-10 {
+		t.Errorf("First output value = %v, want %v", out[0], input[0])
+	}
+	if math.Abs(out[outSamples-1]-input[len(input)-1]) > 1e-10 {
+		t.Errorf("Last output value = %v, want %v", out[outSamples-1], input[len(input)-1])
+	}
+
+	// Output should be monotonically increasing for monotonic input
+	for i := 1; i < len(out); i++ {
+		if out[i] < out[i-1] {
+			t.Errorf("Output not monotonically increasing at index %d: %v < %v", i, out[i], out[i-1])
+		}
+	}
+
+	t.Logf("Input: %v, Output: %v", input, out)
+}
+
+// Test edge cases
+func TestInterpolateEdgeCases(t *testing.T) {
+	tests := []struct {
+		name             string
+		input            []float64
+		outSamples       int
+		interpolatorType InterpolatorType
+	}{
+		{
+			name:             "single output sample",
+			input:            []float64{1.0, 2.0, 3.0},
+			outSamples:       1,
+			interpolatorType: Linear,
+		},
+		{
+			name:             "empty input",
+			input:            []float64{},
+			outSamples:       5,
+			interpolatorType: Linear,
+		},
+		{
+			name:             "single input sample to multiple outputs",
+			input:            []float64{5.0},
+			outSamples:       3,
+			interpolatorType: Linear,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			out, err := Interpolate(tt.input, tt.outSamples, tt.interpolatorType)
+			if err != nil {
+				t.Errorf("Interpolate() returned unexpected error: %v", err)
+			}
+
+			expectedLen := tt.outSamples
+			if len(tt.input) == 0 {
+				expectedLen = 0
+			}
+
+			if len(out) != expectedLen {
+				t.Errorf("Interpolate() output length = %d, want %d", len(out), expectedLen)
+			}
+
+			t.Logf("Input: %v, Output: %v", tt.input, out)
+		})
 	}
 }
