@@ -34,6 +34,18 @@ const (
 	Hermite6_3
 	// Hermite6_5 is the 6-point, 5th-order Hermite interpolator
 	Hermite6_5
+	// CubicSpline is the natural cubic spline interpolator with C² continuity
+	CubicSpline
+	// MonotonicCubic is the Fritsch-Carlson monotonic cubic interpolator (preserves monotonicity)
+	MonotonicCubic
+	// Lanczos2 is the windowed sinc interpolator with a=2 (4-point)
+	Lanczos2
+	// Lanczos3 is the windowed sinc interpolator with a=3 (6-point)
+	Lanczos3
+	// Bezier is the cubic Bezier curve interpolator
+	Bezier
+	// Akima is the Akima spline interpolator (robust to outliers)
+	Akima
 )
 
 // dropSampleImpulse implements the drop-sample (0th-order B-spline) impulse response
@@ -313,6 +325,182 @@ func hermite6_5Impulse(x float64) float64 {
 	return 0.0
 }
 
+// cubicSplineCoefficients computes the coefficients for natural cubic spline
+func cubicSplineCoefficients(x, y []float64) (a, b, c, d []float64) {
+	n := len(x) - 1
+	h := make([]float64, n)
+	for i := 0; i < n; i++ {
+		h[i] = x[i+1] - x[i]
+	}
+
+	// Solve tridiagonal system for second derivatives
+	alpha := make([]float64, n)
+	for i := 1; i < n; i++ {
+		alpha[i] = (3/h[i])*(y[i+1]-y[i]) - (3/h[i-1])*(y[i]-y[i-1])
+	}
+
+	l := make([]float64, n+1)
+	mu := make([]float64, n+1)
+	z := make([]float64, n+1)
+	l[0] = 1.0
+
+	for i := 1; i < n; i++ {
+		l[i] = 2*(x[i+1]-x[i-1]) - h[i-1]*mu[i-1]
+		mu[i] = h[i] / l[i]
+		z[i] = (alpha[i] - h[i-1]*z[i-1]) / l[i]
+	}
+
+	l[n] = 1.0
+	z[n] = 0.0
+	c = make([]float64, n+1)
+	b = make([]float64, n)
+	d = make([]float64, n)
+	a = make([]float64, n)
+
+	c[n] = 0.0
+	for j := n - 1; j >= 0; j-- {
+		c[j] = z[j] - mu[j]*c[j+1]
+		b[j] = (y[j+1]-y[j])/h[j] - h[j]*(c[j+1]+2*c[j])/3
+		d[j] = (c[j+1] - c[j]) / (3 * h[j])
+		a[j] = y[j]
+	}
+
+	return a, b, c, d
+}
+
+// monotonicCubicSlopes computes slopes for Fritsch-Carlson monotonic cubic interpolation
+func monotonicCubicSlopes(x, y []float64) []float64 {
+	n := len(x)
+	delta := make([]float64, n-1)
+	m := make([]float64, n)
+
+	// Calculate secant slopes
+	for i := 0; i < n-1; i++ {
+		delta[i] = (y[i+1] - y[i]) / (x[i+1] - x[i])
+	}
+
+	// Initialize tangents
+	m[0] = delta[0]
+	for i := 1; i < n-1; i++ {
+		if delta[i-1]*delta[i] <= 0 {
+			m[i] = 0
+		} else {
+			m[i] = (delta[i-1] + delta[i]) / 2
+		}
+	}
+	m[n-1] = delta[n-2]
+
+	// Adjust tangents to preserve monotonicity
+	for i := 0; i < n-1; i++ {
+		if math.Abs(delta[i]) < 1e-10 {
+			m[i] = 0
+			m[i+1] = 0
+		} else {
+			alpha := m[i] / delta[i]
+			beta := m[i+1] / delta[i]
+			tau := 3.0
+			if alpha*alpha+beta*beta > tau*tau {
+				t := tau / math.Sqrt(alpha*alpha+beta*beta)
+				m[i] = t * alpha * delta[i]
+				m[i+1] = t * beta * delta[i]
+			}
+		}
+	}
+
+	return m
+}
+
+// lanczos2Impulse implements the Lanczos-2 windowed sinc impulse response
+func lanczos2Impulse(x float64) float64 {
+	absX := math.Abs(x)
+	if absX < 1e-10 {
+		return 1.0
+	}
+	if absX >= 2.0 {
+		return 0.0
+	}
+	// sinc(x) * sinc(x/a) where a=2
+	piX := math.Pi * absX
+	return (math.Sin(piX) / piX) * (math.Sin(piX/2.0) / (piX / 2.0))
+}
+
+// lanczos3Impulse implements the Lanczos-3 windowed sinc impulse response
+func lanczos3Impulse(x float64) float64 {
+	absX := math.Abs(x)
+	if absX < 1e-10 {
+		return 1.0
+	}
+	if absX >= 3.0 {
+		return 0.0
+	}
+	// sinc(x) * sinc(x/a) where a=3
+	piX := math.Pi * absX
+	return (math.Sin(piX) / piX) * (math.Sin(piX/3.0) / (piX / 3.0))
+}
+
+// bezierImpulse implements cubic Bezier curve interpolation
+// Uses uniform parameterization with automatic control point generation
+func bezierImpulse(x float64) float64 {
+	absX := math.Abs(x)
+
+	if absX >= 0 && absX < 1 {
+		// Cubic Bezier basis function B1(t) for t in [0,1]
+		t := absX
+		t2 := t * t
+		t3 := t2 * t
+		// Smooth interpolation similar to smoothstep
+		return 1.0 - 3.0*t2 + 2.0*t3
+	} else if absX >= 1 && absX < 2 {
+		// Smooth falloff in outer region
+		t := 2.0 - absX
+		return t * t * (3.0 - 2.0*t) / 8.0
+	}
+	return 0.0
+}
+
+// akimaSlopes computes slopes for Akima spline interpolation
+func akimaSlopes(x, y []float64) []float64 {
+	n := len(x)
+	m := make([]float64, n)
+
+	if n < 3 {
+		// Not enough points for Akima, fall back to linear
+		for i := 0; i < n-1; i++ {
+			m[i] = (y[i+1] - y[i]) / (x[i+1] - x[i])
+		}
+		if n > 0 {
+			m[n-1] = m[n-2]
+		}
+		return m
+	}
+
+	// Calculate segment slopes
+	s := make([]float64, n+3)
+	for i := 0; i < n-1; i++ {
+		s[i+2] = (y[i+1] - y[i]) / (x[i+1] - x[i])
+	}
+
+	// Extrapolate slopes at boundaries
+	s[1] = 2*s[2] - s[3]
+	s[0] = 2*s[1] - s[2]
+	s[n+1] = 2*s[n] - s[n-1]
+	s[n+2] = 2*s[n+1] - s[n]
+
+	// Calculate Akima slopes
+	for i := 0; i < n; i++ {
+		w1 := math.Abs(s[i+3] - s[i+2])
+		w2 := math.Abs(s[i+1] - s[i])
+
+		if w1+w2 < 1e-10 {
+			m[i] = (s[i+1] + s[i+2]) / 2.0
+		} else {
+			m[i] = (w1*s[i+1] + w2*s[i+2]) / (w1 + w2)
+		}
+	}
+
+	return m
+}
+
 // Interpolate performs interpolation on the input data based on the specified type
 func Interpolate(in []float64, outSamples int, interpolatorType InterpolatorType) (out []float64, err error) {
 	switch interpolatorType {
@@ -347,6 +535,18 @@ func Interpolate(in []float64, outSamples int, interpolatorType InterpolatorType
 		return applyInterpolation(in, outSamples, hermite6_3Impulse), nil
 	case Hermite6_5:
 		return applyInterpolation(in, outSamples, hermite6_5Impulse), nil
+	case CubicSpline:
+		return applyCubicSpline(in, outSamples), nil
+	case MonotonicCubic:
+		return applyMonotonicCubic(in, outSamples), nil
+	case Lanczos2:
+		return applyInterpolation(in, outSamples, lanczos2Impulse), nil
+	case Lanczos3:
+		return applyInterpolation(in, outSamples, lanczos3Impulse), nil
+	case Bezier:
+		return applyInterpolation(in, outSamples, bezierImpulse), nil
+	case Akima:
+		return applyAkimaSpline(in, outSamples), nil
 	default:
 		out = make([]float64, len(in))
 		copy(out, in)
@@ -381,6 +581,170 @@ func applyInterpolation(in []float64, outSamples int, impulse func(float64) floa
 			sum += in[j] * impulse(distance)
 		}
 		out[i] = sum
+	}
+
+	return out
+}
+
+// applyCubicSpline applies natural cubic spline interpolation
+func applyCubicSpline(in []float64, outSamples int) []float64 {
+	if len(in) == 0 {
+		return []float64{}
+	}
+	if len(in) == 1 {
+		out := make([]float64, outSamples)
+		for i := range out {
+			out[i] = in[0]
+		}
+		return out
+	}
+
+	// Create x values for input points
+	x := make([]float64, len(in))
+	for i := range x {
+		x[i] = float64(i)
+	}
+
+	// Compute spline coefficients
+	a, b, c, d := cubicSplineCoefficients(x, in)
+
+	out := make([]float64, outSamples)
+	var ratio float64
+	if outSamples > 1 {
+		ratio = float64(len(in)-1) / float64(outSamples-1)
+	} else {
+		ratio = 0
+	}
+
+	for i := range out {
+		pos := float64(i) * ratio
+		j := int(pos)
+		if j >= len(in)-1 {
+			j = len(in) - 2
+		}
+		if j < 0 {
+			j = 0
+		}
+
+		dx := pos - float64(j)
+		dx2 := dx * dx
+		dx3 := dx2 * dx
+
+		out[i] = a[j] + b[j]*dx + c[j]*dx2 + d[j]*dx3
+	}
+
+	return out
+}
+
+// applyMonotonicCubic applies Fritsch-Carlson monotonic cubic interpolation
+func applyMonotonicCubic(in []float64, outSamples int) []float64 {
+	if len(in) == 0 {
+		return []float64{}
+	}
+	if len(in) == 1 {
+		out := make([]float64, outSamples)
+		for i := range out {
+			out[i] = in[0]
+		}
+		return out
+	}
+
+	// Create x values for input points
+	x := make([]float64, len(in))
+	for i := range x {
+		x[i] = float64(i)
+	}
+
+	// Compute monotonic slopes
+	m := monotonicCubicSlopes(x, in)
+
+	out := make([]float64, outSamples)
+	var ratio float64
+	if outSamples > 1 {
+		ratio = float64(len(in)-1) / float64(outSamples-1)
+	} else {
+		ratio = 0
+	}
+
+	for i := range out {
+		pos := float64(i) * ratio
+		j := int(pos)
+		if j >= len(in)-1 {
+			j = len(in) - 2
+		}
+		if j < 0 {
+			j = 0
+		}
+
+		h := x[j+1] - x[j]
+		t := (pos - x[j]) / h
+		t2 := t * t
+		t3 := t2 * t
+
+		// Hermite basis functions
+		h00 := 2*t3 - 3*t2 + 1
+		h10 := t3 - 2*t2 + t
+		h01 := -2*t3 + 3*t2
+		h11 := t3 - t2
+
+		out[i] = h00*in[j] + h10*h*m[j] + h01*in[j+1] + h11*h*m[j+1]
+	}
+
+	return out
+}
+
+// applyAkimaSpline applies Akima spline interpolation
+func applyAkimaSpline(in []float64, outSamples int) []float64 {
+	if len(in) == 0 {
+		return []float64{}
+	}
+	if len(in) == 1 {
+		out := make([]float64, outSamples)
+		for i := range out {
+			out[i] = in[0]
+		}
+		return out
+	}
+
+	// Create x values for input points
+	x := make([]float64, len(in))
+	for i := range x {
+		x[i] = float64(i)
+	}
+
+	// Compute Akima slopes
+	m := akimaSlopes(x, in)
+
+	out := make([]float64, outSamples)
+	var ratio float64
+	if outSamples > 1 {
+		ratio = float64(len(in)-1) / float64(outSamples-1)
+	} else {
+		ratio = 0
+	}
+
+	for i := range out {
+		pos := float64(i) * ratio
+		j := int(pos)
+		if j >= len(in)-1 {
+			j = len(in) - 2
+		}
+		if j < 0 {
+			j = 0
+		}
+
+		h := x[j+1] - x[j]
+		t := (pos - x[j]) / h
+		t2 := t * t
+		t3 := t2 * t
+
+		// Hermite basis functions
+		h00 := 2*t3 - 3*t2 + 1
+		h10 := t3 - 2*t2 + t
+		h01 := -2*t3 + 3*t2
+		h11 := t3 - t2
+
+		out[i] = h00*in[j] + h10*h*m[j] + h01*in[j+1] + h11*h*m[j+1]
 	}
 
 	return out

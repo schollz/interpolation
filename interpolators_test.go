@@ -970,6 +970,208 @@ t.Errorf("Interpolate() output length = %d, want %d", len(out), len(tt.input))
 }
 }
 
+func TestInterpolateCubicSpline(t *testing.T) {
+	tests := []struct {
+		name  string
+		input []float64
+	}{
+		{
+			name:  "empty input",
+			input: []float64{},
+		},
+		{
+			name:  "single element",
+			input: []float64{1.0},
+		},
+		{
+			name:  "multiple elements",
+			input: []float64{1.0, 2.0, 3.0, 4.0, 5.0, 6.0},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			out, err := Interpolate(tt.input, len(tt.input), CubicSpline)
+			if err != nil {
+				t.Errorf("Interpolate() returned unexpected error: %v", err)
+			}
+
+			if len(out) != len(tt.input) {
+				t.Errorf("Interpolate() output length = %d, want %d", len(out), len(tt.input))
+			}
+		})
+	}
+}
+
+func TestInterpolateMonotonicCubic(t *testing.T) {
+	tests := []struct {
+		name  string
+		input []float64
+	}{
+		{
+			name:  "empty input",
+			input: []float64{},
+		},
+		{
+			name:  "single element",
+			input: []float64{1.0},
+		},
+		{
+			name:  "monotonic increasing",
+			input: []float64{1.0, 2.0, 3.0, 4.0, 5.0},
+		},
+		{
+			name:  "monotonic decreasing",
+			input: []float64{5.0, 4.0, 3.0, 2.0, 1.0},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			out, err := Interpolate(tt.input, len(tt.input)*2, MonotonicCubic)
+			if err != nil {
+				t.Errorf("Interpolate() returned unexpected error: %v", err)
+			}
+
+			if len(out) != len(tt.input)*2 {
+				t.Errorf("Interpolate() output length = %d, want %d", len(out), len(tt.input)*2)
+			}
+		})
+	}
+}
+
+func TestInterpolateLanczos2(t *testing.T) {
+	tests := []struct {
+		name  string
+		input []float64
+	}{
+		{
+			name:  "empty input",
+			input: []float64{},
+		},
+		{
+			name:  "single element",
+			input: []float64{1.0},
+		},
+		{
+			name:  "multiple elements",
+			input: []float64{1.0, 2.0, 3.0, 4.0, 5.0, 6.0},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			out, err := Interpolate(tt.input, len(tt.input), Lanczos2)
+			if err != nil {
+				t.Errorf("Interpolate() returned unexpected error: %v", err)
+			}
+
+			if len(out) != len(tt.input) {
+				t.Errorf("Interpolate() output length = %d, want %d", len(out), len(tt.input))
+			}
+		})
+	}
+}
+
+func TestInterpolateLanczos3(t *testing.T) {
+	tests := []struct {
+		name  string
+		input []float64
+	}{
+		{
+			name:  "empty input",
+			input: []float64{},
+		},
+		{
+			name:  "single element",
+			input: []float64{1.0},
+		},
+		{
+			name:  "multiple elements",
+			input: []float64{1.0, 2.0, 3.0, 4.0, 5.0, 6.0},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			out, err := Interpolate(tt.input, len(tt.input), Lanczos3)
+			if err != nil {
+				t.Errorf("Interpolate() returned unexpected error: %v", err)
+			}
+
+			if len(out) != len(tt.input) {
+				t.Errorf("Interpolate() output length = %d, want %d", len(out), len(tt.input))
+			}
+		})
+	}
+}
+
+func TestInterpolateBezier(t *testing.T) {
+	tests := []struct {
+		name  string
+		input []float64
+	}{
+		{
+			name:  "empty input",
+			input: []float64{},
+		},
+		{
+			name:  "single element",
+			input: []float64{1.0},
+		},
+		{
+			name:  "multiple elements",
+			input: []float64{1.0, 2.0, 3.0, 4.0, 5.0, 6.0},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			out, err := Interpolate(tt.input, len(tt.input), Bezier)
+			if err != nil {
+				t.Errorf("Interpolate() returned unexpected error: %v", err)
+			}
+
+			if len(out) != len(tt.input) {
+				t.Errorf("Interpolate() output length = %d, want %d", len(out), len(tt.input))
+			}
+		})
+	}
+}
+
+func TestInterpolateAkima(t *testing.T) {
+	tests := []struct {
+		name  string
+		input []float64
+	}{
+		{
+			name:  "empty input",
+			input: []float64{},
+		},
+		{
+			name:  "single element",
+			input: []float64{1.0},
+		},
+		{
+			name:  "multiple elements",
+			input: []float64{1.0, 2.0, 3.0, 4.0, 5.0, 6.0},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			out, err := Interpolate(tt.input, len(tt.input), Akima)
+			if err != nil {
+				t.Errorf("Interpolate() returned unexpected error: %v", err)
+			}
+
+			if len(out) != len(tt.input) {
+				t.Errorf("Interpolate() output length = %d, want %d", len(out), len(tt.input))
+			}
+		})
+	}
+}
+
 // BenchmarkInterpolators benchmarks all interpolator types with 1000 input points to 500 output points
 func BenchmarkInterpolators(b *testing.B) {
 	// Generate 1000 random input points
@@ -997,6 +1199,12 @@ func BenchmarkInterpolators(b *testing.B) {
 		{"Hermite4", Hermite4},
 		{"Hermite6_3", Hermite6_3},
 		{"Hermite6_5", Hermite6_5},
+		{"CubicSpline", CubicSpline},
+		{"MonotonicCubic", MonotonicCubic},
+		{"Lanczos2", Lanczos2},
+		{"Lanczos3", Lanczos3},
+		{"Bezier", Bezier},
+		{"Akima", Akima},
 	}
 	
 	for _, bm := range benchmarks {
