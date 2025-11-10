@@ -969,3 +969,44 @@ t.Errorf("Interpolate() output length = %d, want %d", len(out), len(tt.input))
 })
 }
 }
+
+// BenchmarkInterpolators benchmarks all interpolator types with 1000 input points to 500 output points
+func BenchmarkInterpolators(b *testing.B) {
+	// Generate 1000 random input points
+	input := make([]float64, 1000)
+	for i := range input {
+		input[i] = math.Sin(float64(i) * 0.1)
+	}
+	
+	outSamples := 500
+	
+	benchmarks := []struct {
+		name             string
+		interpolatorType InterpolatorType
+	}{
+		{"DropSample", DropSample},
+		{"Linear", Linear},
+		{"BSpline3", BSpline3},
+		{"BSpline5", BSpline5},
+		{"Lagrange4", Lagrange4},
+		{"Lagrange6", Lagrange6},
+		{"Watte", Watte},
+		{"Parabolic2x", Parabolic2x},
+		{"Osculating4", Osculating4},
+		{"Osculating6", Osculating6},
+		{"Hermite4", Hermite4},
+		{"Hermite6_3", Hermite6_3},
+		{"Hermite6_5", Hermite6_5},
+	}
+	
+	for _, bm := range benchmarks {
+		b.Run(bm.name, func(b *testing.B) {
+			for i := 0; i < b.N; i++ {
+				_, err := Interpolate(input, outSamples, bm.interpolatorType)
+				if err != nil {
+					b.Fatalf("Interpolate() returned unexpected error: %v", err)
+				}
+			}
+		})
+	}
+}
