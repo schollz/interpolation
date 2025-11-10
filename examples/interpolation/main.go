@@ -53,6 +53,8 @@ func main() {
 		{"Linear", interpolators.Linear},
 		{"BSpline3", interpolators.BSpline3},
 		{"BSpline5", interpolators.BSpline5},
+		{"Lagrange4", interpolators.Lagrange4},
+		{"Lagrange6", interpolators.Lagrange6},
 	}
 
 	for _, interp := range interpolationTypes {
