@@ -59,23 +59,24 @@ goos: linux
 goarch: amd64
 pkg: github.com/schollz/interpolation
 cpu: 13th Gen Intel(R) Core(TM) i9-13900K
-BenchmarkInterpolators/DropSample-32         	    1630	    727904 ns/op
-BenchmarkInterpolators/Linear-32             	    1574	    731301 ns/op
-BenchmarkInterpolators/BSpline3-32           	    1430	    830065 ns/op
-BenchmarkInterpolators/BSpline5-32           	    1489	    800694 ns/op
-BenchmarkInterpolators/Lagrange4-32          	    1626	    731049 ns/op
-BenchmarkInterpolators/Lagrange6-32          	    1422	    776290 ns/op
-BenchmarkInterpolators/Watte-32              	    1641	    729529 ns/op
-BenchmarkInterpolators/Parabolic2x-32        	    1482	    812000 ns/op
-BenchmarkInterpolators/Osculating4-32        	    1616	    740163 ns/op
-BenchmarkInterpolators/Osculating6-32        	    1532	    782763 ns/op
-BenchmarkInterpolators/Hermite4-32           	    1638	    733020 ns/op
-BenchmarkInterpolators/Hermite6_3-32         	    1544	    770836 ns/op
-BenchmarkInterpolators/Hermite6_5-32         	    1543	    770243 ns/op
-BenchmarkInterpolators/CubicSpline-32        	   60253	     19571 ns/op
-BenchmarkInterpolators/MonotonicCubic-32     	  141849	      9216 ns/op
-BenchmarkInterpolators/Lanczos2-32           	    1585	    757603 ns/op
-BenchmarkInterpolators/Lanczos3-32           	    1473	    765207 ns/op
-BenchmarkInterpolators/Bezier-32             	    1560	    758721 ns/op
-BenchmarkInterpolators/Akima-32              	  155307	      7629 ns/op
+BenchmarkResampleWAVFile/Linear-32                  1552            835038 ns/op
+BenchmarkResampleWAVFile/DropSample-32              1537            849516 ns/op
+BenchmarkResampleWAVFile/BSpline3-32                 685           1671143 ns/op
+BenchmarkResampleWAVFile/BSpline5-32                 462           2531651 ns/op
+BenchmarkResampleWAVFile/Lagrange4-32                679           1730536 ns/op
+BenchmarkResampleWAVFile/Lagrange6-32                444           2796961 ns/op
+BenchmarkResampleWAVFile/Watte-32                    896           1488571 ns/op
+BenchmarkResampleWAVFile/Parabolic2x-32              784           1468642 ns/op
+BenchmarkResampleWAVFile/Osculating4-32              646           1990904 ns/op
+BenchmarkResampleWAVFile/Osculating6-32              427           2525010 ns/op
+BenchmarkResampleWAVFile/Hermite4-32                 570           2215825 ns/op
+BenchmarkResampleWAVFile/Hermite6_3-32               411           2687895 ns/op
+BenchmarkResampleWAVFile/Hermite6_5-32               403           3145303 ns/op
+BenchmarkResampleWAVFile/Lanczos2-32                 213           5560200 ns/op
+BenchmarkResampleWAVFile/Lanczos3-32                 147           8437112 ns/op
+BenchmarkResampleWAVFile/Bezier-32                   556           2163774 ns/op
 ```
+
+## License
+
+MIT
