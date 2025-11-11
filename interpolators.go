@@ -594,6 +594,73 @@ func dropSampleInterpolate(in []float64, outSamples int) []float64 {
 	return out
 }
 
+// bspline3Interpolate performs optimized B-spline 3 (cubic B-spline) interpolation
+// This specialized version only checks 4 nearby samples (support ±2)
+func bspline3Interpolate(in []float64, outSamples int) []float64 {
+	if len(in) == 0 {
+		return []float64{}
+	}
+
+	if len(in) == 1 {
+		out := make([]float64, outSamples)
+		for i := range out {
+			out[i] = in[0]
+		}
+		return out
+	}
+
+	out := make([]float64, outSamples)
+
+	// Calculate the ratio to map output samples to input samples
+	var ratio float64
+	if outSamples > 1 {
+		ratio = float64(len(in)-1) / float64(outSamples-1)
+	} else {
+		ratio = 0
+	}
+
+	for i := range out {
+		// Calculate the position in the input array
+		pos := float64(i) * ratio
+
+		// Get the 4 nearby samples (support is ±2)
+		centerIdx := int(pos + 0.5) // Round to nearest
+		sum := 0.0
+
+		// Check 4 samples: centerIdx-1, centerIdx, centerIdx+1, centerIdx+2
+		// This covers the range where |distance| < 2
+		for j := centerIdx - 1; j <= centerIdx+2; j++ {
+			if j < 0 || j >= len(in) {
+				continue
+			}
+			distance := pos - float64(j)
+			absX := distance
+			if absX < 0 {
+				absX = -absX
+			}
+
+			// Inline bspline3 impulse calculation
+			var impulse float64
+			if absX < 1 {
+				x2 := absX * absX
+				x3 := x2 * absX
+				impulse = 2.0/3.0 - x2 + 0.5*x3
+			} else if absX < 2 {
+				x2 := absX * absX
+				x3 := x2 * absX
+				impulse = 4.0/3.0 - 2.0*absX + x2 - x3/6.0
+			} else {
+				impulse = 0.0
+			}
+
+			sum += in[j] * impulse
+		}
+		out[i] = sum
+	}
+
+	return out
+}
+
 // Interpolate performs interpolation on the input data based on the specified type
 func Interpolate(in []float64, outSamples int, interpolatorType InterpolatorType) (out []float64, err error) {
 	switch interpolatorType {
@@ -607,7 +674,7 @@ func Interpolate(in []float64, outSamples int, interpolatorType InterpolatorType
 	case Linear:
 		return linearInterpolate(in, outSamples), nil
 	case BSpline3:
-		return applyInterpolation(in, outSamples, bspline3Impulse), nil
+		return bspline3Interpolate(in, outSamples), nil
 	case BSpline5:
 		return applyInterpolation(in, outSamples, bspline5Impulse), nil
 	case Lagrange4:
