@@ -3,3 +3,4 @@ examples/interpolation/interpolation_data.json
 examples/interpolation/interpolation_plot.html
 examples/interpolation/plot_interpolation.py
 examples/interpolation/example
+tests/

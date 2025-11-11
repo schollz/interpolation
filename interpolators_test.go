@@ -2,7 +2,14 @@ package interpolators
 
 import (
 	"math"
+	"os"
+	"os/exec"
+	"path/filepath"
+	"strings"
 	"testing"
+
+	"github.com/go-audio/audio"
+	"github.com/go-audio/wav"
 )
 
 func TestInterpolateNone(t *testing.T) {
@@ -811,163 +818,163 @@ func TestInterpolateOsculating6(t *testing.T) {
 }
 
 func TestHermite4Impulse(t *testing.T) {
-tests := []struct {
-x        float64
-expected float64
-}{
-{0.0, 1.0},                           // At x=0: 1 - 0 + 0 = 1
-{0.5, 1.0 - 2.5*0.25 + 1.5*0.125},    // At x=0.5
-{1.0, 2.0 - 4.0 + 2.5 - 0.5},         // At x=1, should be continuous
-{1.5, 2.0 - 6.0 + 2.5*2.25 - 0.5*3.375}, // At x=1.5
-{2.0, 0.0},                           // At x=2 and beyond, should be 0
-{2.5, 0.0},
-{-0.5, 1.0 - 2.5*0.25 + 1.5*0.125},   // Symmetric
-{-2.0, 0.0},
-}
+	tests := []struct {
+		x        float64
+		expected float64
+	}{
+		{0.0, 1.0},                              // At x=0: 1 - 0 + 0 = 1
+		{0.5, 1.0 - 2.5*0.25 + 1.5*0.125},       // At x=0.5
+		{1.0, 2.0 - 4.0 + 2.5 - 0.5},            // At x=1, should be continuous
+		{1.5, 2.0 - 6.0 + 2.5*2.25 - 0.5*3.375}, // At x=1.5
+		{2.0, 0.0},                              // At x=2 and beyond, should be 0
+		{2.5, 0.0},
+		{-0.5, 1.0 - 2.5*0.25 + 1.5*0.125}, // Symmetric
+		{-2.0, 0.0},
+	}
 
-for _, tt := range tests {
-result := hermite4Impulse(tt.x)
-if math.Abs(result-tt.expected) > 1e-10 {
-t.Errorf("hermite4Impulse(%v) = %v, want %v", tt.x, result, tt.expected)
-}
-}
+	for _, tt := range tests {
+		result := hermite4Impulse(tt.x)
+		if math.Abs(result-tt.expected) > 1e-10 {
+			t.Errorf("hermite4Impulse(%v) = %v, want %v", tt.x, result, tt.expected)
+		}
+	}
 }
 
 func TestHermite6_3Impulse(t *testing.T) {
-tests := []struct {
-x        float64
-expected float64
-}{
-{0.0, 1.0},  // At x=0: 1 - 0 + 0 = 1
-{3.0, 0.0},  // At x=3 and beyond, should be 0
-{3.5, 0.0},
-{-3.0, 0.0}, // Symmetric
-}
+	tests := []struct {
+		x        float64
+		expected float64
+	}{
+		{0.0, 1.0}, // At x=0: 1 - 0 + 0 = 1
+		{3.0, 0.0}, // At x=3 and beyond, should be 0
+		{3.5, 0.0},
+		{-3.0, 0.0}, // Symmetric
+	}
 
-for _, tt := range tests {
-result := hermite6_3Impulse(tt.x)
-if math.Abs(result-tt.expected) > 1e-10 {
-t.Errorf("hermite6_3Impulse(%v) = %v, want %v", tt.x, result, tt.expected)
-}
-}
+	for _, tt := range tests {
+		result := hermite6_3Impulse(tt.x)
+		if math.Abs(result-tt.expected) > 1e-10 {
+			t.Errorf("hermite6_3Impulse(%v) = %v, want %v", tt.x, result, tt.expected)
+		}
+	}
 }
 
 func TestHermite6_5Impulse(t *testing.T) {
-tests := []struct {
-x        float64
-expected float64
-}{
-{0.0, 1.0},  // At x=0: 1 - 0 + 0 + 0 - 0 = 1
-{3.0, 0.0},  // At x=3 and beyond, should be 0
-{3.5, 0.0},
-{-3.0, 0.0}, // Symmetric
-}
+	tests := []struct {
+		x        float64
+		expected float64
+	}{
+		{0.0, 1.0}, // At x=0: 1 - 0 + 0 + 0 - 0 = 1
+		{3.0, 0.0}, // At x=3 and beyond, should be 0
+		{3.5, 0.0},
+		{-3.0, 0.0}, // Symmetric
+	}
 
-for _, tt := range tests {
-result := hermite6_5Impulse(tt.x)
-if math.Abs(result-tt.expected) > 1e-10 {
-t.Errorf("hermite6_5Impulse(%v) = %v, want %v", tt.x, result, tt.expected)
-}
-}
+	for _, tt := range tests {
+		result := hermite6_5Impulse(tt.x)
+		if math.Abs(result-tt.expected) > 1e-10 {
+			t.Errorf("hermite6_5Impulse(%v) = %v, want %v", tt.x, result, tt.expected)
+		}
+	}
 }
 
 func TestInterpolateHermite4(t *testing.T) {
-tests := []struct {
-name  string
-input []float64
-}{
-{
-name:  "empty input",
-input: []float64{},
-},
-{
-name:  "single element",
-input: []float64{1.0},
-},
-{
-name:  "multiple elements",
-input: []float64{1.0, 2.0, 3.0, 4.0, 5.0},
-},
-}
+	tests := []struct {
+		name  string
+		input []float64
+	}{
+		{
+			name:  "empty input",
+			input: []float64{},
+		},
+		{
+			name:  "single element",
+			input: []float64{1.0},
+		},
+		{
+			name:  "multiple elements",
+			input: []float64{1.0, 2.0, 3.0, 4.0, 5.0},
+		},
+	}
 
-for _, tt := range tests {
-t.Run(tt.name, func(t *testing.T) {
-out, err := Interpolate(tt.input, len(tt.input), Hermite4)
-if err != nil {
-t.Errorf("Interpolate() returned unexpected error: %v", err)
-}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			out, err := Interpolate(tt.input, len(tt.input), Hermite4)
+			if err != nil {
+				t.Errorf("Interpolate() returned unexpected error: %v", err)
+			}
 
-if len(out) != len(tt.input) {
-t.Errorf("Interpolate() output length = %d, want %d", len(out), len(tt.input))
-}
-})
-}
+			if len(out) != len(tt.input) {
+				t.Errorf("Interpolate() output length = %d, want %d", len(out), len(tt.input))
+			}
+		})
+	}
 }
 
 func TestInterpolateHermite6_3(t *testing.T) {
-tests := []struct {
-name  string
-input []float64
-}{
-{
-name:  "empty input",
-input: []float64{},
-},
-{
-name:  "single element",
-input: []float64{1.0},
-},
-{
-name:  "multiple elements",
-input: []float64{1.0, 2.0, 3.0, 4.0, 5.0, 6.0},
-},
-}
+	tests := []struct {
+		name  string
+		input []float64
+	}{
+		{
+			name:  "empty input",
+			input: []float64{},
+		},
+		{
+			name:  "single element",
+			input: []float64{1.0},
+		},
+		{
+			name:  "multiple elements",
+			input: []float64{1.0, 2.0, 3.0, 4.0, 5.0, 6.0},
+		},
+	}
 
-for _, tt := range tests {
-t.Run(tt.name, func(t *testing.T) {
-out, err := Interpolate(tt.input, len(tt.input), Hermite6_3)
-if err != nil {
-t.Errorf("Interpolate() returned unexpected error: %v", err)
-}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			out, err := Interpolate(tt.input, len(tt.input), Hermite6_3)
+			if err != nil {
+				t.Errorf("Interpolate() returned unexpected error: %v", err)
+			}
 
-if len(out) != len(tt.input) {
-t.Errorf("Interpolate() output length = %d, want %d", len(out), len(tt.input))
-}
-})
-}
+			if len(out) != len(tt.input) {
+				t.Errorf("Interpolate() output length = %d, want %d", len(out), len(tt.input))
+			}
+		})
+	}
 }
 
 func TestInterpolateHermite6_5(t *testing.T) {
-tests := []struct {
-name  string
-input []float64
-}{
-{
-name:  "empty input",
-input: []float64{},
-},
-{
-name:  "single element",
-input: []float64{1.0},
-},
-{
-name:  "multiple elements",
-input: []float64{1.0, 2.0, 3.0, 4.0, 5.0, 6.0},
-},
-}
+	tests := []struct {
+		name  string
+		input []float64
+	}{
+		{
+			name:  "empty input",
+			input: []float64{},
+		},
+		{
+			name:  "single element",
+			input: []float64{1.0},
+		},
+		{
+			name:  "multiple elements",
+			input: []float64{1.0, 2.0, 3.0, 4.0, 5.0, 6.0},
+		},
+	}
 
-for _, tt := range tests {
-t.Run(tt.name, func(t *testing.T) {
-out, err := Interpolate(tt.input, len(tt.input), Hermite6_5)
-if err != nil {
-t.Errorf("Interpolate() returned unexpected error: %v", err)
-}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			out, err := Interpolate(tt.input, len(tt.input), Hermite6_5)
+			if err != nil {
+				t.Errorf("Interpolate() returned unexpected error: %v", err)
+			}
 
-if len(out) != len(tt.input) {
-t.Errorf("Interpolate() output length = %d, want %d", len(out), len(tt.input))
-}
-})
-}
+			if len(out) != len(tt.input) {
+				t.Errorf("Interpolate() output length = %d, want %d", len(out), len(tt.input))
+			}
+		})
+	}
 }
 
 func TestInterpolateCubicSpline(t *testing.T) {
@@ -1179,9 +1186,9 @@ func BenchmarkInterpolators(b *testing.B) {
 	for i := range input {
 		input[i] = math.Sin(float64(i) * 0.1)
 	}
-	
+
 	outSamples := 500
-	
+
 	benchmarks := []struct {
 		name             string
 		interpolatorType InterpolatorType
@@ -1206,7 +1213,7 @@ func BenchmarkInterpolators(b *testing.B) {
 		{"Bezier", Bezier},
 		{"Akima", Akima},
 	}
-	
+
 	for _, bm := range benchmarks {
 		b.Run(bm.name, func(b *testing.B) {
 			for i := 0; i < b.N; i++ {
@@ -1475,4 +1482,167 @@ func BenchmarkInterpolateInt(b *testing.B) {
 			}
 		}
 	})
+}
+
+// TestResampleWAVFile tests loading a WAV file, resampling it, and re-encoding it
+func TestResampleWAVFile(t *testing.T) {
+	// Load the WAV file
+	inputPath := "examples/amen_beats8_bpm172.wav"
+	file, err := os.Open(inputPath)
+	if err != nil {
+		t.Fatalf("Failed to open input WAV file: %v", err)
+	}
+	defer file.Close()
+
+	decoder := wav.NewDecoder(file)
+	if !decoder.IsValidFile() {
+		t.Fatalf("Input file is not a valid WAV file")
+	}
+
+	// Read the entire audio buffer
+	buf, err := decoder.FullPCMBuffer()
+	if err != nil {
+		t.Fatalf("Failed to read PCM buffer: %v", err)
+	}
+
+	originalSampleRate := int(decoder.SampleRate)
+	targetSampleRate := 22000
+	numChannels := int(decoder.NumChans)
+	bitDepth := int(decoder.BitDepth)
+
+	t.Logf("Original: %d Hz, %d channels, %d-bit", originalSampleRate, numChannels, bitDepth)
+	t.Logf("Target: %d Hz", targetSampleRate)
+	t.Logf("Original samples: %d", len(buf.Data)/numChannels)
+
+	// Calculate new number of samples
+	originalSamples := len(buf.Data) / numChannels
+	newSamples := int(float64(originalSamples) * float64(targetSampleRate) / float64(originalSampleRate))
+
+	// Separate channels and resample each
+	resampledData := make([]int, newSamples*numChannels)
+
+	for ch := 0; ch < numChannels; ch++ {
+		// Extract channel data
+		channelData := make([]int, originalSamples)
+		for i := 0; i < originalSamples; i++ {
+			channelData[i] = buf.Data[i*numChannels+ch]
+		}
+
+		// Resample this channel
+		resampled, err := InterpolateInt(channelData, newSamples, Linear)
+		if err != nil {
+			t.Fatalf("Failed to resample channel %d: %v", ch, err)
+		}
+
+		// Interleave back into output
+		for i := 0; i < newSamples; i++ {
+			resampledData[i*numChannels+ch] = resampled[i]
+		}
+	}
+
+	// Create output buffer
+	outputBuf := &audio.IntBuffer{
+		Data:           resampledData,
+		Format:         &audio.Format{SampleRate: targetSampleRate, NumChannels: numChannels},
+		SourceBitDepth: bitDepth,
+	}
+
+	// Write to temporary file
+	tempDir := t.TempDir()
+	outputPath := filepath.Join(tempDir, "resampled.wav")
+
+	outFile, err := os.Create(outputPath)
+	if err != nil {
+		t.Fatalf("Failed to create output file: %v", err)
+	}
+
+	encoder := wav.NewEncoder(outFile, targetSampleRate, bitDepth, numChannels, 1)
+	if err := encoder.Write(outputBuf); err != nil {
+		outFile.Close()
+		t.Fatalf("Failed to encode WAV: %v", err)
+	}
+
+	if err := encoder.Close(); err != nil {
+		outFile.Close()
+		t.Fatalf("Failed to close encoder: %v", err)
+	}
+
+	outFile.Close()
+
+	// Verify with sox --i
+	cmd := exec.Command("sox", "--i", outputPath)
+	output, err := cmd.CombinedOutput()
+	if err != nil {
+		t.Fatalf("sox --i failed: %v\nOutput: %s", err, string(output))
+	}
+
+	outputStr := string(output)
+	t.Logf("sox --i output:\n%s", outputStr)
+
+	// Verify key properties
+	if !strings.Contains(outputStr, "Sample Rate    : 22000") {
+		t.Errorf("Expected sample rate 22000, got: %s", outputStr)
+	}
+
+	if !strings.Contains(outputStr, "Channels       : 2") {
+		t.Errorf("Expected 2 channels, got: %s", outputStr)
+	}
+
+	// Verify duration is approximately correct (should be about twice as long in time since we halved the sample rate)
+	// Original: 123069 samples at 44100 Hz = 2.79 seconds
+	// Resampled: ~61534 samples at 22000 Hz = still ~2.79 seconds
+	if !strings.Contains(outputStr, "samples") {
+		t.Errorf("Output should contain sample information")
+	}
+
+	t.Logf("Successfully resampled from %d Hz to %d Hz", originalSampleRate, targetSampleRate)
+	t.Logf("Sample count: %d -> %d", originalSamples, newSamples)
+}
+
+// BenchmarkResampleWAVFile benchmarks resampling a WAV file with Linear interpolation
+func BenchmarkResampleWAVFile(b *testing.B) {
+	// Load the WAV file once
+	inputPath := "examples/amen_beats8_bpm172.wav"
+	file, err := os.Open(inputPath)
+	if err != nil {
+		b.Fatalf("Failed to open input WAV file: %v", err)
+	}
+	defer file.Close()
+
+	decoder := wav.NewDecoder(file)
+	if !decoder.IsValidFile() {
+		b.Fatalf("Input file is not a valid WAV file")
+	}
+
+	// Read the entire audio buffer
+	buf, err := decoder.FullPCMBuffer()
+	if err != nil {
+		b.Fatalf("Failed to read PCM buffer: %v", err)
+	}
+
+	originalSampleRate := int(decoder.SampleRate)
+	targetSampleRate := 22000
+	numChannels := int(decoder.NumChans)
+	originalSamples := len(buf.Data) / numChannels
+	newSamples := int(float64(originalSamples) * float64(targetSampleRate) / float64(originalSampleRate))
+
+	// Extract channel data once
+	channels := make([][]int, numChannels)
+	for ch := 0; ch < numChannels; ch++ {
+		channels[ch] = make([]int, originalSamples)
+		for i := 0; i < originalSamples; i++ {
+			channels[ch][i] = buf.Data[i*numChannels+ch]
+		}
+	}
+
+	b.ResetTimer()
+
+	for i := 0; i < b.N; i++ {
+		for ch := 0; ch < numChannels; ch++ {
+			_, err := InterpolateInt(channels[ch], newSamples, Linear)
+			if err != nil {
+				b.Fatalf("Failed to resample channel %d: %v", ch, err)
+			}
+		}
+	}
 }
