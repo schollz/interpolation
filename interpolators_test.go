@@ -1486,120 +1486,132 @@ func BenchmarkInterpolateInt(b *testing.B) {
 
 // TestResampleWAVFile tests loading a WAV file, resampling it, and re-encoding it
 func TestResampleWAVFile(t *testing.T) {
-	// Load the WAV file
-	inputPath := "examples/amen_beats8_bpm172.wav"
-	file, err := os.Open(inputPath)
-	if err != nil {
-		t.Fatalf("Failed to open input WAV file: %v", err)
-	}
-	defer file.Close()
-
-	decoder := wav.NewDecoder(file)
-	if !decoder.IsValidFile() {
-		t.Fatalf("Input file is not a valid WAV file")
+	tests := []struct {
+		name         string
+		interpolator InterpolatorType
+	}{
+		{"Linear", Linear},
+		{"DropSample", DropSample},
 	}
 
-	// Read the entire audio buffer
-	buf, err := decoder.FullPCMBuffer()
-	if err != nil {
-		t.Fatalf("Failed to read PCM buffer: %v", err)
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			// Load the WAV file
+			inputPath := "examples/amen_beats8_bpm172.wav"
+			file, err := os.Open(inputPath)
+			if err != nil {
+				t.Fatalf("Failed to open input WAV file: %v", err)
+			}
+			defer file.Close()
+
+			decoder := wav.NewDecoder(file)
+			if !decoder.IsValidFile() {
+				t.Fatalf("Input file is not a valid WAV file")
+			}
+
+			// Read the entire audio buffer
+			buf, err := decoder.FullPCMBuffer()
+			if err != nil {
+				t.Fatalf("Failed to read PCM buffer: %v", err)
+			}
+
+			originalSampleRate := int(decoder.SampleRate)
+			targetSampleRate := 22000
+			numChannels := int(decoder.NumChans)
+			bitDepth := int(decoder.BitDepth)
+
+			t.Logf("Original: %d Hz, %d channels, %d-bit", originalSampleRate, numChannels, bitDepth)
+			t.Logf("Target: %d Hz", targetSampleRate)
+			t.Logf("Original samples: %d", len(buf.Data)/numChannels)
+
+			// Calculate new number of samples
+			originalSamples := len(buf.Data) / numChannels
+			newSamples := int(float64(originalSamples) * float64(targetSampleRate) / float64(originalSampleRate))
+
+			// Separate channels and resample each
+			resampledData := make([]int, newSamples*numChannels)
+
+			for ch := 0; ch < numChannels; ch++ {
+				// Extract channel data
+				channelData := make([]int, originalSamples)
+				for i := 0; i < originalSamples; i++ {
+					channelData[i] = buf.Data[i*numChannels+ch]
+				}
+
+				// Resample this channel with the specified interpolator
+				resampled, err := InterpolateInt(channelData, newSamples, tt.interpolator)
+				if err != nil {
+					t.Fatalf("Failed to resample channel %d: %v", ch, err)
+				}
+
+				// Interleave back into output
+				for i := 0; i < newSamples; i++ {
+					resampledData[i*numChannels+ch] = resampled[i]
+				}
+			}
+
+			// Create output buffer
+			outputBuf := &audio.IntBuffer{
+				Data:           resampledData,
+				Format:         &audio.Format{SampleRate: targetSampleRate, NumChannels: numChannels},
+				SourceBitDepth: bitDepth,
+			}
+
+			// Write to temporary file
+			tempDir := t.TempDir()
+			outputPath := filepath.Join(tempDir, "resampled.wav")
+
+			outFile, err := os.Create(outputPath)
+			if err != nil {
+				t.Fatalf("Failed to create output file: %v", err)
+			}
+
+			encoder := wav.NewEncoder(outFile, targetSampleRate, bitDepth, numChannels, 1)
+			if err := encoder.Write(outputBuf); err != nil {
+				outFile.Close()
+				t.Fatalf("Failed to encode WAV: %v", err)
+			}
+
+			if err := encoder.Close(); err != nil {
+				outFile.Close()
+				t.Fatalf("Failed to close encoder: %v", err)
+			}
+
+			outFile.Close()
+
+			// Verify with sox --i
+			cmd := exec.Command("sox", "--i", outputPath)
+			output, err := cmd.CombinedOutput()
+			if err != nil {
+				t.Fatalf("sox --i failed: %v\nOutput: %s", err, string(output))
+			}
+
+			outputStr := string(output)
+			t.Logf("sox --i output:\n%s", outputStr)
+
+			// Verify key properties
+			if !strings.Contains(outputStr, "Sample Rate    : 22000") {
+				t.Errorf("Expected sample rate 22000, got: %s", outputStr)
+			}
+
+			if !strings.Contains(outputStr, "Channels       : 2") {
+				t.Errorf("Expected 2 channels, got: %s", outputStr)
+			}
+
+			// Verify duration is approximately correct (should be about twice as long in time since we halved the sample rate)
+			// Original: 123069 samples at 44100 Hz = 2.79 seconds
+			// Resampled: ~61534 samples at 22000 Hz = still ~2.79 seconds
+			if !strings.Contains(outputStr, "samples") {
+				t.Errorf("Output should contain sample information")
+			}
+
+			t.Logf("Successfully resampled from %d Hz to %d Hz using %s", originalSampleRate, targetSampleRate, tt.name)
+			t.Logf("Sample count: %d -> %d", originalSamples, newSamples)
+		})
 	}
-
-	originalSampleRate := int(decoder.SampleRate)
-	targetSampleRate := 22000
-	numChannels := int(decoder.NumChans)
-	bitDepth := int(decoder.BitDepth)
-
-	t.Logf("Original: %d Hz, %d channels, %d-bit", originalSampleRate, numChannels, bitDepth)
-	t.Logf("Target: %d Hz", targetSampleRate)
-	t.Logf("Original samples: %d", len(buf.Data)/numChannels)
-
-	// Calculate new number of samples
-	originalSamples := len(buf.Data) / numChannels
-	newSamples := int(float64(originalSamples) * float64(targetSampleRate) / float64(originalSampleRate))
-
-	// Separate channels and resample each
-	resampledData := make([]int, newSamples*numChannels)
-
-	for ch := 0; ch < numChannels; ch++ {
-		// Extract channel data
-		channelData := make([]int, originalSamples)
-		for i := 0; i < originalSamples; i++ {
-			channelData[i] = buf.Data[i*numChannels+ch]
-		}
-
-		// Resample this channel
-		resampled, err := InterpolateInt(channelData, newSamples, Linear)
-		if err != nil {
-			t.Fatalf("Failed to resample channel %d: %v", ch, err)
-		}
-
-		// Interleave back into output
-		for i := 0; i < newSamples; i++ {
-			resampledData[i*numChannels+ch] = resampled[i]
-		}
-	}
-
-	// Create output buffer
-	outputBuf := &audio.IntBuffer{
-		Data:           resampledData,
-		Format:         &audio.Format{SampleRate: targetSampleRate, NumChannels: numChannels},
-		SourceBitDepth: bitDepth,
-	}
-
-	// Write to temporary file
-	tempDir := t.TempDir()
-	outputPath := filepath.Join(tempDir, "resampled.wav")
-
-	outFile, err := os.Create(outputPath)
-	if err != nil {
-		t.Fatalf("Failed to create output file: %v", err)
-	}
-
-	encoder := wav.NewEncoder(outFile, targetSampleRate, bitDepth, numChannels, 1)
-	if err := encoder.Write(outputBuf); err != nil {
-		outFile.Close()
-		t.Fatalf("Failed to encode WAV: %v", err)
-	}
-
-	if err := encoder.Close(); err != nil {
-		outFile.Close()
-		t.Fatalf("Failed to close encoder: %v", err)
-	}
-
-	outFile.Close()
-
-	// Verify with sox --i
-	cmd := exec.Command("sox", "--i", outputPath)
-	output, err := cmd.CombinedOutput()
-	if err != nil {
-		t.Fatalf("sox --i failed: %v\nOutput: %s", err, string(output))
-	}
-
-	outputStr := string(output)
-	t.Logf("sox --i output:\n%s", outputStr)
-
-	// Verify key properties
-	if !strings.Contains(outputStr, "Sample Rate    : 22000") {
-		t.Errorf("Expected sample rate 22000, got: %s", outputStr)
-	}
-
-	if !strings.Contains(outputStr, "Channels       : 2") {
-		t.Errorf("Expected 2 channels, got: %s", outputStr)
-	}
-
-	// Verify duration is approximately correct (should be about twice as long in time since we halved the sample rate)
-	// Original: 123069 samples at 44100 Hz = 2.79 seconds
-	// Resampled: ~61534 samples at 22000 Hz = still ~2.79 seconds
-	if !strings.Contains(outputStr, "samples") {
-		t.Errorf("Output should contain sample information")
-	}
-
-	t.Logf("Successfully resampled from %d Hz to %d Hz", originalSampleRate, targetSampleRate)
-	t.Logf("Sample count: %d -> %d", originalSamples, newSamples)
 }
 
-// BenchmarkResampleWAVFile benchmarks resampling a WAV file with Linear interpolation
+// BenchmarkResampleWAVFile benchmarks resampling a WAV file with different interpolators
 func BenchmarkResampleWAVFile(b *testing.B) {
 	// Load the WAV file once
 	inputPath := "examples/amen_beats8_bpm172.wav"
@@ -1635,14 +1647,24 @@ func BenchmarkResampleWAVFile(b *testing.B) {
 		}
 	}
 
-	b.ResetTimer()
+	benchmarks := []struct {
+		name         string
+		interpolator InterpolatorType
+	}{
+		{"Linear", Linear},
+		{"DropSample", DropSample},
+	}
 
-	for i := 0; i < b.N; i++ {
-		for ch := 0; ch < numChannels; ch++ {
-			_, err := InterpolateInt(channels[ch], newSamples, Linear)
-			if err != nil {
-				b.Fatalf("Failed to resample channel %d: %v", ch, err)
+	for _, bm := range benchmarks {
+		b.Run(bm.name, func(b *testing.B) {
+			for i := 0; i < b.N; i++ {
+				for ch := 0; ch < numChannels; ch++ {
+					_, err := InterpolateInt(channels[ch], newSamples, bm.interpolator)
+					if err != nil {
+						b.Fatalf("Failed to resample channel %d: %v", ch, err)
+					}
+				}
 			}
-		}
+		})
 	}
 }

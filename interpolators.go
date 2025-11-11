@@ -501,6 +501,99 @@ func akimaSlopes(x, y []float64) []float64 {
 	return m
 }
 
+// linearInterpolate performs optimized linear interpolation
+// This specialized version only checks adjacent samples instead of all samples
+func linearInterpolate(in []float64, outSamples int) []float64 {
+	if len(in) == 0 {
+		return []float64{}
+	}
+
+	if len(in) == 1 {
+		out := make([]float64, outSamples)
+		for i := range out {
+			out[i] = in[0]
+		}
+		return out
+	}
+
+	out := make([]float64, outSamples)
+
+	// Calculate the ratio to map output samples to input samples
+	var ratio float64
+	if outSamples > 1 {
+		ratio = float64(len(in)-1) / float64(outSamples-1)
+	} else {
+		ratio = 0
+	}
+
+	for i := range out {
+		// Calculate the position in the input array
+		pos := float64(i) * ratio
+
+		// Get the two adjacent samples
+		idx0 := int(pos)
+		idx1 := idx0 + 1
+
+		// Handle boundary cases
+		if idx0 >= len(in)-1 {
+			out[i] = in[len(in)-1]
+			continue
+		}
+
+		// Linear interpolation between the two samples
+		// distance from idx0 is the fractional part
+		frac := pos - float64(idx0)
+
+		// Linear interpolation: (1-frac)*val0 + frac*val1
+		out[i] = in[idx0]*(1.0-frac) + in[idx1]*frac
+	}
+
+	return out
+}
+
+// dropSampleInterpolate performs optimized drop-sample (nearest neighbor) interpolation
+// This specialized version picks the nearest input sample for each output sample
+func dropSampleInterpolate(in []float64, outSamples int) []float64 {
+	if len(in) == 0 {
+		return []float64{}
+	}
+
+	if len(in) == 1 {
+		out := make([]float64, outSamples)
+		for i := range out {
+			out[i] = in[0]
+		}
+		return out
+	}
+
+	out := make([]float64, outSamples)
+
+	// Calculate the ratio to map output samples to input samples
+	var ratio float64
+	if outSamples > 1 {
+		ratio = float64(len(in)-1) / float64(outSamples-1)
+	} else {
+		ratio = 0
+	}
+
+	for i := range out {
+		// Calculate the position in the input array
+		pos := float64(i) * ratio
+
+		// Round to nearest integer to get the closest sample
+		idx := int(pos + 0.5)
+
+		// Handle boundary cases
+		if idx >= len(in) {
+			idx = len(in) - 1
+		}
+
+		out[i] = in[idx]
+	}
+
+	return out
+}
+
 // Interpolate performs interpolation on the input data based on the specified type
 func Interpolate(in []float64, outSamples int, interpolatorType InterpolatorType) (out []float64, err error) {
 	switch interpolatorType {
@@ -510,9 +603,9 @@ func Interpolate(in []float64, outSamples int, interpolatorType InterpolatorType
 		copy(out, in)
 		return out, nil
 	case DropSample:
-		return applyInterpolation(in, outSamples, dropSampleImpulse), nil
+		return dropSampleInterpolate(in, outSamples), nil
 	case Linear:
-		return applyInterpolation(in, outSamples, linearImpulse), nil
+		return linearInterpolate(in, outSamples), nil
 	case BSpline3:
 		return applyInterpolation(in, outSamples, bspline3Impulse), nil
 	case BSpline5:
