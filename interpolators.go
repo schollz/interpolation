@@ -661,6 +661,82 @@ func bspline3Interpolate(in []float64, outSamples int) []float64 {
 	return out
 }
 
+// bspline5Interpolate performs optimized B-spline 5 (quintic B-spline) interpolation
+// This specialized version only checks 6 nearby samples (support ±3)
+func bspline5Interpolate(in []float64, outSamples int) []float64 {
+	if len(in) == 0 {
+		return []float64{}
+	}
+
+	if len(in) == 1 {
+		out := make([]float64, outSamples)
+		for i := range out {
+			out[i] = in[0]
+		}
+		return out
+	}
+
+	out := make([]float64, outSamples)
+
+	// Calculate the ratio to map output samples to input samples
+	var ratio float64
+	if outSamples > 1 {
+		ratio = float64(len(in)-1) / float64(outSamples-1)
+	} else {
+		ratio = 0
+	}
+
+	for i := range out {
+		// Calculate the position in the input array
+		pos := float64(i) * ratio
+
+		// Get the 6 nearby samples (support is ±3)
+		centerIdx := int(pos + 0.5) // Round to nearest
+		sum := 0.0
+
+		// Check 6 samples: centerIdx-2 to centerIdx+3
+		// This covers the range where |distance| < 3
+		for j := centerIdx - 2; j <= centerIdx+3; j++ {
+			if j < 0 || j >= len(in) {
+				continue
+			}
+			distance := pos - float64(j)
+			absX := distance
+			if absX < 0 {
+				absX = -absX
+			}
+
+			// Inline bspline5 impulse calculation
+			var impulse float64
+			if absX < 1 {
+				x2 := absX * absX
+				x4 := x2 * x2
+				x5 := x4 * absX
+				impulse = 11.0/20.0 - 0.5*x2 + 0.25*x4 - x5/12.0
+			} else if absX < 2 {
+				x2 := absX * absX
+				x3 := x2 * absX
+				x4 := x2 * x2
+				x5 := x4 * absX
+				impulse = 17.0/40.0 + 5.0*absX/8.0 - 7.0*x2/4.0 + 5.0*x3/4.0 - 3.0*x4/8.0 + x5/24.0
+			} else if absX < 3 {
+				x2 := absX * absX
+				x3 := x2 * absX
+				x4 := x2 * x2
+				x5 := x4 * absX
+				impulse = 81.0/40.0 - 27.0*absX/8.0 + 9.0*x2/4.0 - 3.0*x3/4.0 + x4/8.0 - x5/120.0
+			} else {
+				impulse = 0.0
+			}
+
+			sum += in[j] * impulse
+		}
+		out[i] = sum
+	}
+
+	return out
+}
+
 // Interpolate performs interpolation on the input data based on the specified type
 func Interpolate(in []float64, outSamples int, interpolatorType InterpolatorType) (out []float64, err error) {
 	switch interpolatorType {
@@ -676,7 +752,7 @@ func Interpolate(in []float64, outSamples int, interpolatorType InterpolatorType
 	case BSpline3:
 		return bspline3Interpolate(in, outSamples), nil
 	case BSpline5:
-		return applyInterpolation(in, outSamples, bspline5Impulse), nil
+		return bspline5Interpolate(in, outSamples), nil
 	case Lagrange4:
 		return applyInterpolation(in, outSamples, lagrange4Impulse), nil
 	case Lagrange6:
