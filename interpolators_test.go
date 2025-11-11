@@ -1496,6 +1496,10 @@ func TestResampleWAVFile(t *testing.T) {
 		{"BSpline5", BSpline5},
 		{"Lagrange4", Lagrange4},
 		{"Lagrange6", Lagrange6},
+		{"Watte", Watte},
+		{"Parabolic2x", Parabolic2x},
+		{"Osculating4", Osculating4},
+		{"Osculating6", Osculating6},
 	}
 
 	for _, tt := range tests {
@@ -1661,6 +1665,10 @@ func BenchmarkResampleWAVFile(b *testing.B) {
 		{"BSpline5", BSpline5},
 		{"Lagrange4", Lagrange4},
 		{"Lagrange6", Lagrange6},
+		{"Watte", Watte},
+		{"Parabolic2x", Parabolic2x},
+		{"Osculating4", Osculating4},
+		{"Osculating6", Osculating6},
 	}
 
 	for _, bm := range benchmarks {

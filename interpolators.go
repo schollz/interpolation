@@ -881,6 +881,280 @@ func lagrange6Interpolate(in []float64, outSamples int) []float64 {
 	return out
 }
 
+// watteInterpolate performs optimized Watte tri-linear interpolation
+// This specialized version only checks 4 nearby samples (support ±2)
+func watteInterpolate(in []float64, outSamples int) []float64 {
+	if len(in) == 0 {
+		return []float64{}
+	}
+
+	if len(in) == 1 {
+		out := make([]float64, outSamples)
+		for i := range out {
+			out[i] = in[0]
+		}
+		return out
+	}
+
+	out := make([]float64, outSamples)
+
+	// Calculate the ratio to map output samples to input samples
+	var ratio float64
+	if outSamples > 1 {
+		ratio = float64(len(in)-1) / float64(outSamples-1)
+	} else {
+		ratio = 0
+	}
+
+	for i := range out {
+		// Calculate the position in the input array
+		pos := float64(i) * ratio
+
+		// Get the 4 nearby samples (support is ±2)
+		centerIdx := int(pos + 0.5) // Round to nearest
+		sum := 0.0
+
+		// Check 4 samples: centerIdx-1, centerIdx, centerIdx+1, centerIdx+2
+		for j := centerIdx - 1; j <= centerIdx+2; j++ {
+			if j < 0 || j >= len(in) {
+				continue
+			}
+			distance := pos - float64(j)
+			absX := distance
+			if absX < 0 {
+				absX = -absX
+			}
+
+			// Inline watte impulse calculation
+			var impulse float64
+			if absX < 1 {
+				x2 := absX * absX
+				impulse = 1.0 - 0.5*absX - 0.5*x2
+			} else if absX < 2 {
+				x2 := absX * absX
+				impulse = 1.0 - 1.5*absX + 0.5*x2
+			} else {
+				impulse = 0.0
+			}
+
+			sum += in[j] * impulse
+		}
+		out[i] = sum
+	}
+
+	return out
+}
+
+// parabolic2xInterpolate performs optimized parabolic 2x interpolation
+// This specialized version only checks 4 nearby samples (support ±2)
+func parabolic2xInterpolate(in []float64, outSamples int) []float64 {
+	if len(in) == 0 {
+		return []float64{}
+	}
+
+	if len(in) == 1 {
+		out := make([]float64, outSamples)
+		for i := range out {
+			out[i] = in[0]
+		}
+		return out
+	}
+
+	out := make([]float64, outSamples)
+
+	// Calculate the ratio to map output samples to input samples
+	var ratio float64
+	if outSamples > 1 {
+		ratio = float64(len(in)-1) / float64(outSamples-1)
+	} else {
+		ratio = 0
+	}
+
+	for i := range out {
+		// Calculate the position in the input array
+		pos := float64(i) * ratio
+
+		// Get the 4 nearby samples (support is ±2)
+		centerIdx := int(pos + 0.5) // Round to nearest
+		sum := 0.0
+
+		// Check 4 samples: centerIdx-1, centerIdx, centerIdx+1, centerIdx+2
+		for j := centerIdx - 1; j <= centerIdx+2; j++ {
+			if j < 0 || j >= len(in) {
+				continue
+			}
+			distance := pos - float64(j)
+			absX := distance
+			if absX < 0 {
+				absX = -absX
+			}
+
+			// Inline parabolic2x impulse calculation
+			var impulse float64
+			if absX < 1 {
+				x2 := absX * absX
+				impulse = 0.5 - 0.25*x2
+			} else if absX < 2 {
+				x2 := absX * absX
+				impulse = 1.0 - absX + 0.25*x2
+			} else {
+				impulse = 0.0
+			}
+
+			sum += in[j] * impulse
+		}
+		out[i] = sum
+	}
+
+	return out
+}
+
+// osculating4Interpolate performs optimized Osculating 4-point interpolation
+// This specialized version only checks 4 nearby samples (support ±2)
+func osculating4Interpolate(in []float64, outSamples int) []float64 {
+	if len(in) == 0 {
+		return []float64{}
+	}
+
+	if len(in) == 1 {
+		out := make([]float64, outSamples)
+		for i := range out {
+			out[i] = in[0]
+		}
+		return out
+	}
+
+	out := make([]float64, outSamples)
+
+	// Calculate the ratio to map output samples to input samples
+	var ratio float64
+	if outSamples > 1 {
+		ratio = float64(len(in)-1) / float64(outSamples-1)
+	} else {
+		ratio = 0
+	}
+
+	for i := range out {
+		// Calculate the position in the input array
+		pos := float64(i) * ratio
+
+		// Get the 4 nearby samples (support is ±2)
+		centerIdx := int(pos + 0.5) // Round to nearest
+		sum := 0.0
+
+		// Check 4 samples: centerIdx-1, centerIdx, centerIdx+1, centerIdx+2
+		for j := centerIdx - 1; j <= centerIdx+2; j++ {
+			if j < 0 || j >= len(in) {
+				continue
+			}
+			distance := pos - float64(j)
+			absX := distance
+			if absX < 0 {
+				absX = -absX
+			}
+
+			// Inline osculating4 impulse calculation
+			var impulse float64
+			if absX < 1 {
+				x2 := absX * absX
+				x3 := x2 * absX
+				x4 := x2 * x2
+				x5 := x4 * absX
+				impulse = 1.0 - x2 - 4.5*x3 + 7.5*x4 - 3.0*x5
+			} else if absX < 2 {
+				x2 := absX * absX
+				x3 := x2 * absX
+				x4 := x2 * x2
+				x5 := x4 * absX
+				impulse = -4.0 + 18.0*absX - 29.0*x2 + 21.5*x3 - 7.5*x4 + x5
+			} else {
+				impulse = 0.0
+			}
+
+			sum += in[j] * impulse
+		}
+		out[i] = sum
+	}
+
+	return out
+}
+
+// osculating6Interpolate performs optimized Osculating 6-point interpolation
+// This specialized version only checks 6 nearby samples (support ±3)
+func osculating6Interpolate(in []float64, outSamples int) []float64 {
+	if len(in) == 0 {
+		return []float64{}
+	}
+
+	if len(in) == 1 {
+		out := make([]float64, outSamples)
+		for i := range out {
+			out[i] = in[0]
+		}
+		return out
+	}
+
+	out := make([]float64, outSamples)
+
+	// Calculate the ratio to map output samples to input samples
+	var ratio float64
+	if outSamples > 1 {
+		ratio = float64(len(in)-1) / float64(outSamples-1)
+	} else {
+		ratio = 0
+	}
+
+	for i := range out {
+		// Calculate the position in the input array
+		pos := float64(i) * ratio
+
+		// Get the 6 nearby samples (support is ±3)
+		centerIdx := int(pos + 0.5) // Round to nearest
+		sum := 0.0
+
+		// Check 6 samples: centerIdx-2 to centerIdx+3
+		for j := centerIdx - 2; j <= centerIdx+3; j++ {
+			if j < 0 || j >= len(in) {
+				continue
+			}
+			distance := pos - float64(j)
+			absX := distance
+			if absX < 0 {
+				absX = -absX
+			}
+
+			// Inline osculating6 impulse calculation
+			var impulse float64
+			if absX < 1 {
+				x2 := absX * absX
+				x3 := x2 * absX
+				x4 := x2 * x2
+				x5 := x4 * absX
+				impulse = 1.0 - 1.25*x2 - (35.0/12.0)*x3 + 5.25*x4 - (25.0/12.0)*x5
+			} else if absX < 2 {
+				x2 := absX * absX
+				x3 := x2 * absX
+				x4 := x2 * x2
+				x5 := x4 * absX
+				impulse = -4.0 + 18.75*absX - 30.625*x2 + (545.0/24.0)*x3 - 7.875*x4 + (25.0/24.0)*x5
+			} else if absX < 3 {
+				x2 := absX * absX
+				x3 := x2 * absX
+				x4 := x2 * x2
+				x5 := x4 * absX
+				impulse = 18.0 - 38.25*absX + 31.875*x2 - (313.0/24.0)*x3 + 2.625*x4 - (5.0/24.0)*x5
+			} else {
+				impulse = 0.0
+			}
+
+			sum += in[j] * impulse
+		}
+		out[i] = sum
+	}
+
+	return out
+}
+
 // Interpolate performs interpolation on the input data based on the specified type
 func Interpolate(in []float64, outSamples int, interpolatorType InterpolatorType) (out []float64, err error) {
 	switch interpolatorType {
@@ -902,13 +1176,13 @@ func Interpolate(in []float64, outSamples int, interpolatorType InterpolatorType
 	case Lagrange6:
 		return lagrange6Interpolate(in, outSamples), nil
 	case Watte:
-		return applyInterpolation(in, outSamples, watteImpulse), nil
+		return watteInterpolate(in, outSamples), nil
 	case Parabolic2x:
-		return applyInterpolation(in, outSamples, parabolic2xImpulse), nil
+		return parabolic2xInterpolate(in, outSamples), nil
 	case Osculating4:
-		return applyInterpolation(in, outSamples, osculating4Impulse), nil
+		return osculating4Interpolate(in, outSamples), nil
 	case Osculating6:
-		return applyInterpolation(in, outSamples, osculating6Impulse), nil
+		return osculating6Interpolate(in, outSamples), nil
 	case Hermite4:
 		return applyInterpolation(in, outSamples, hermite4Impulse), nil
 	case Hermite6_3:
