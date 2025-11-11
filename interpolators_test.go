@@ -1500,6 +1500,12 @@ func TestResampleWAVFile(t *testing.T) {
 		{"Parabolic2x", Parabolic2x},
 		{"Osculating4", Osculating4},
 		{"Osculating6", Osculating6},
+		{"Hermite4", Hermite4},
+		{"Hermite6_3", Hermite6_3},
+		{"Hermite6_5", Hermite6_5},
+		{"Lanczos2", Lanczos2},
+		{"Lanczos3", Lanczos3},
+		{"Bezier", Bezier},
 	}
 
 	for _, tt := range tests {
@@ -1669,6 +1675,12 @@ func BenchmarkResampleWAVFile(b *testing.B) {
 		{"Parabolic2x", Parabolic2x},
 		{"Osculating4", Osculating4},
 		{"Osculating6", Osculating6},
+		{"Hermite4", Hermite4},
+		{"Hermite6_3", Hermite6_3},
+		{"Hermite6_5", Hermite6_5},
+		{"Lanczos2", Lanczos2},
+		{"Lanczos3", Lanczos3},
+		{"Bezier", Bezier},
 	}
 
 	for _, bm := range benchmarks {

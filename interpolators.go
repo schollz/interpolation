@@ -1155,6 +1155,354 @@ func osculating6Interpolate(in []float64, outSamples int) []float64 {
 	return out
 }
 
+// hermite4Interpolate implements optimized 4-point Hermite (Catmull-Rom) interpolation
+// Support: ±2 (checks 4 samples per output)
+func hermite4Interpolate(in []float64, outSamples int) []float64 {
+	out := make([]float64, outSamples)
+	if len(in) == 0 {
+		return out
+	}
+	if len(in) == 1 {
+		for i := range out {
+			out[i] = in[0]
+		}
+		return out
+	}
+
+	ratio := float64(len(in)-1) / float64(outSamples-1)
+	lastIdx := len(in) - 1
+
+	for i := range out {
+		pos := float64(i) * ratio
+		centerIdx := int(math.Round(pos))
+
+		var sum float64
+		// Check 4 samples: centerIdx-1 to centerIdx+2 (support ±2)
+		for j := centerIdx - 1; j <= centerIdx+2; j++ {
+			// Clamp to valid range
+			idx := j
+			if idx < 0 {
+				idx = 0
+			} else if idx > lastIdx {
+				idx = lastIdx
+			}
+
+			distance := math.Abs(pos - float64(j))
+
+			// Inline hermite4 impulse calculation
+			var impulse float64
+			if distance >= 0 && distance < 1 {
+				x2 := distance * distance
+				x3 := x2 * distance
+				impulse = 1.0 - 2.5*x2 + 1.5*x3
+			} else if distance >= 1 && distance < 2 {
+				x2 := distance * distance
+				x3 := x2 * distance
+				impulse = 2.0 - 4.0*distance + 2.5*x2 - 0.5*x3
+			} else {
+				impulse = 0.0
+			}
+
+			sum += in[idx] * impulse
+		}
+		out[i] = sum
+	}
+
+	return out
+}
+
+// hermite6_3Interpolate implements optimized 6-point, 3rd-order Hermite interpolation
+// Support: ±3 (checks 6 samples per output)
+func hermite6_3Interpolate(in []float64, outSamples int) []float64 {
+	out := make([]float64, outSamples)
+	if len(in) == 0 {
+		return out
+	}
+	if len(in) == 1 {
+		for i := range out {
+			out[i] = in[0]
+		}
+		return out
+	}
+
+	ratio := float64(len(in)-1) / float64(outSamples-1)
+	lastIdx := len(in) - 1
+
+	for i := range out {
+		pos := float64(i) * ratio
+		centerIdx := int(math.Round(pos))
+
+		var sum float64
+		// Check 6 samples: centerIdx-2 to centerIdx+3 (support ±3)
+		for j := centerIdx - 2; j <= centerIdx+3; j++ {
+			// Clamp to valid range
+			idx := j
+			if idx < 0 {
+				idx = 0
+			} else if idx > lastIdx {
+				idx = lastIdx
+			}
+
+			distance := math.Abs(pos - float64(j))
+
+			// Inline hermite6_3 impulse calculation
+			var impulse float64
+			if distance >= 0 && distance < 1 {
+				x2 := distance * distance
+				x3 := x2 * distance
+				impulse = 1.0 - (7.0/3.0)*x2 + (4.0/3.0)*x3
+			} else if distance >= 1 && distance < 2 {
+				x2 := distance * distance
+				x3 := x2 * distance
+				impulse = 2.5 - (59.0/12.0)*distance + 3.0*x2 - (7.0/12.0)*x3
+			} else if distance >= 2 && distance < 3 {
+				x2 := distance * distance
+				x3 := x2 * distance
+				impulse = -1.5 + 1.75*distance - (2.0/3.0)*x2 + (1.0/12.0)*x3
+			} else {
+				impulse = 0.0
+			}
+
+			sum += in[idx] * impulse
+		}
+		out[i] = sum
+	}
+
+	return out
+}
+
+// hermite6_5Interpolate implements optimized 6-point, 5th-order Hermite interpolation
+// Support: ±3 (checks 6 samples per output)
+func hermite6_5Interpolate(in []float64, outSamples int) []float64 {
+	out := make([]float64, outSamples)
+	if len(in) == 0 {
+		return out
+	}
+	if len(in) == 1 {
+		for i := range out {
+			out[i] = in[0]
+		}
+		return out
+	}
+
+	ratio := float64(len(in)-1) / float64(outSamples-1)
+	lastIdx := len(in) - 1
+
+	for i := range out {
+		pos := float64(i) * ratio
+		centerIdx := int(math.Round(pos))
+
+		var sum float64
+		// Check 6 samples: centerIdx-2 to centerIdx+3 (support ±3)
+		for j := centerIdx - 2; j <= centerIdx+3; j++ {
+			// Clamp to valid range
+			idx := j
+			if idx < 0 {
+				idx = 0
+			} else if idx > lastIdx {
+				idx = lastIdx
+			}
+
+			distance := math.Abs(pos - float64(j))
+
+			// Inline hermite6_5 impulse calculation
+			var impulse float64
+			if distance >= 0 && distance < 1 {
+				x2 := distance * distance
+				x3 := x2 * distance
+				x4 := x2 * x2
+				x5 := x4 * distance
+				impulse = 1.0 - (25.0/12.0)*x2 + (5.0/12.0)*x3 + (13.0/12.0)*x4 - (5.0/12.0)*x5
+			} else if distance >= 1 && distance < 2 {
+				x2 := distance * distance
+				x3 := x2 * distance
+				x4 := x2 * x2
+				x5 := x4 * distance
+				impulse = 1.0 + (5.0/12.0)*distance - (35.0/8.0)*x2 + (35.0/8.0)*x3 - (13.0/8.0)*x4 + (5.0/24.0)*x5
+			} else if distance >= 2 && distance < 3 {
+				x2 := distance * distance
+				x3 := x2 * distance
+				x4 := x2 * x2
+				x5 := x4 * distance
+				impulse = 3.0 - (29.0/4.0)*distance + (155.0/24.0)*x2 - (65.0/24.0)*x3 + (13.0/24.0)*x4 - (1.0/24.0)*x5
+			} else {
+				impulse = 0.0
+			}
+
+			sum += in[idx] * impulse
+		}
+		out[i] = sum
+	}
+
+	return out
+}
+
+// lanczos2Interpolate implements optimized Lanczos-2 windowed sinc interpolation
+// Support: ±2 (checks 4 samples per output)
+func lanczos2Interpolate(in []float64, outSamples int) []float64 {
+	out := make([]float64, outSamples)
+	if len(in) == 0 {
+		return out
+	}
+	if len(in) == 1 {
+		for i := range out {
+			out[i] = in[0]
+		}
+		return out
+	}
+
+	ratio := float64(len(in)-1) / float64(outSamples-1)
+	lastIdx := len(in) - 1
+
+	for i := range out {
+		pos := float64(i) * ratio
+		centerIdx := int(math.Round(pos))
+
+		var sum float64
+		// Check 4 samples: centerIdx-1 to centerIdx+2 (support ±2)
+		for j := centerIdx - 1; j <= centerIdx+2; j++ {
+			// Clamp to valid range
+			idx := j
+			if idx < 0 {
+				idx = 0
+			} else if idx > lastIdx {
+				idx = lastIdx
+			}
+
+			distance := math.Abs(pos - float64(j))
+
+			// Inline lanczos2 impulse calculation
+			var impulse float64
+			if distance < 1e-10 {
+				impulse = 1.0
+			} else if distance < 2.0 {
+				// sinc(x) * sinc(x/a) where a=2
+				piX := math.Pi * distance
+				impulse = (math.Sin(piX) / piX) * (math.Sin(piX/2.0) / (piX / 2.0))
+			} else {
+				impulse = 0.0
+			}
+
+			sum += in[idx] * impulse
+		}
+		out[i] = sum
+	}
+
+	return out
+}
+
+// lanczos3Interpolate implements optimized Lanczos-3 windowed sinc interpolation
+// Support: ±3 (checks 6 samples per output)
+func lanczos3Interpolate(in []float64, outSamples int) []float64 {
+	out := make([]float64, outSamples)
+	if len(in) == 0 {
+		return out
+	}
+	if len(in) == 1 {
+		for i := range out {
+			out[i] = in[0]
+		}
+		return out
+	}
+
+	ratio := float64(len(in)-1) / float64(outSamples-1)
+	lastIdx := len(in) - 1
+
+	for i := range out {
+		pos := float64(i) * ratio
+		centerIdx := int(math.Round(pos))
+
+		var sum float64
+		// Check 6 samples: centerIdx-2 to centerIdx+3 (support ±3)
+		for j := centerIdx - 2; j <= centerIdx+3; j++ {
+			// Clamp to valid range
+			idx := j
+			if idx < 0 {
+				idx = 0
+			} else if idx > lastIdx {
+				idx = lastIdx
+			}
+
+			distance := math.Abs(pos - float64(j))
+
+			// Inline lanczos3 impulse calculation
+			var impulse float64
+			if distance < 1e-10 {
+				impulse = 1.0
+			} else if distance < 3.0 {
+				// sinc(x) * sinc(x/a) where a=3
+				piX := math.Pi * distance
+				impulse = (math.Sin(piX) / piX) * (math.Sin(piX/3.0) / (piX / 3.0))
+			} else {
+				impulse = 0.0
+			}
+
+			sum += in[idx] * impulse
+		}
+		out[i] = sum
+	}
+
+	return out
+}
+
+// bezierInterpolate implements optimized cubic Bezier curve interpolation
+// Support: ±2 (checks 4 samples per output)
+func bezierInterpolate(in []float64, outSamples int) []float64 {
+	out := make([]float64, outSamples)
+	if len(in) == 0 {
+		return out
+	}
+	if len(in) == 1 {
+		for i := range out {
+			out[i] = in[0]
+		}
+		return out
+	}
+
+	ratio := float64(len(in)-1) / float64(outSamples-1)
+	lastIdx := len(in) - 1
+
+	for i := range out {
+		pos := float64(i) * ratio
+		centerIdx := int(math.Round(pos))
+
+		var sum float64
+		// Check 4 samples: centerIdx-1 to centerIdx+2 (support ±2)
+		for j := centerIdx - 1; j <= centerIdx+2; j++ {
+			// Clamp to valid range
+			idx := j
+			if idx < 0 {
+				idx = 0
+			} else if idx > lastIdx {
+				idx = lastIdx
+			}
+
+			distance := math.Abs(pos - float64(j))
+
+			// Inline bezier impulse calculation
+			var impulse float64
+			if distance >= 0 && distance < 1 {
+				// Cubic Bezier basis function B1(t) for t in [0,1]
+				t := distance
+				t2 := t * t
+				t3 := t2 * t
+				impulse = 1.0 - 3.0*t2 + 2.0*t3
+			} else if distance >= 1 && distance < 2 {
+				// Smooth falloff in outer region
+				t := 2.0 - distance
+				impulse = t * t * (3.0 - 2.0*t) / 8.0
+			} else {
+				impulse = 0.0
+			}
+
+			sum += in[idx] * impulse
+		}
+		out[i] = sum
+	}
+
+	return out
+}
+
 // Interpolate performs interpolation on the input data based on the specified type
 func Interpolate(in []float64, outSamples int, interpolatorType InterpolatorType) (out []float64, err error) {
 	switch interpolatorType {
@@ -1184,21 +1532,21 @@ func Interpolate(in []float64, outSamples int, interpolatorType InterpolatorType
 	case Osculating6:
 		return osculating6Interpolate(in, outSamples), nil
 	case Hermite4:
-		return applyInterpolation(in, outSamples, hermite4Impulse), nil
+		return hermite4Interpolate(in, outSamples), nil
 	case Hermite6_3:
-		return applyInterpolation(in, outSamples, hermite6_3Impulse), nil
+		return hermite6_3Interpolate(in, outSamples), nil
 	case Hermite6_5:
-		return applyInterpolation(in, outSamples, hermite6_5Impulse), nil
+		return hermite6_5Interpolate(in, outSamples), nil
 	case CubicSpline:
 		return applyCubicSpline(in, outSamples), nil
 	case MonotonicCubic:
 		return applyMonotonicCubic(in, outSamples), nil
 	case Lanczos2:
-		return applyInterpolation(in, outSamples, lanczos2Impulse), nil
+		return lanczos2Interpolate(in, outSamples), nil
 	case Lanczos3:
-		return applyInterpolation(in, outSamples, lanczos3Impulse), nil
+		return lanczos3Interpolate(in, outSamples), nil
 	case Bezier:
-		return applyInterpolation(in, outSamples, bezierImpulse), nil
+		return bezierInterpolate(in, outSamples), nil
 	case Akima:
 		return applyAkimaSpline(in, outSamples), nil
 	default:
