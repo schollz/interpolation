@@ -8,7 +8,7 @@
 
 A Go package with an array of polynomial interpolators for resampling audio.
 
-<img width="1584" height="813" alt="newplot(1)" src="https://github.com/user-attachments/assets/64e2a7ae-3606-4456-9acf-337fc91e72ea" />
+<img width="1584" height="813" alt="newplot(1)" src="https://github.com/user-attachments/assets/da03a1dc-c8fe-48f5-a1bb-16c60d8f96d9" />
 
 ## Available Interpolators
 
